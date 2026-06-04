@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Dashboard v6 — Agent Quiz Performance</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Outfit','Segoe UI',sans-serif;min-height:100vh;background:#F5F6F8;color:#1A1A1A;display:flex}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:#d7dae0;border-radius:3px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.fadeUp{animation:fadeUp .4s ease both}
+/* ── sidebar ── */
+#sidebar{width:236px;background:#fff;border-right:1px solid #E9EBEF;padding:18px 12px;display:flex;flex-direction:column;gap:4px;flex-shrink:0;height:100vh;position:sticky;top:0;overflow-y:auto}
+.logo-row{display:flex;align-items:center;gap:11px;padding:6px 8px 18px;border-bottom:1px solid #EEF0F3;margin-bottom:12px}
+.logo-icon{width:38px;height:38px;border-radius:11px;overflow:hidden;flex-shrink:0;border:1.5px solid #E5E7EB}
+.logo-title{font-size:15px;font-weight:900;letter-spacing:-.3px}
+.logo-sub{font-size:10px;color:#8A8F98;font-weight:600;letter-spacing:.3px}
+.view-seg{display:flex;gap:0;margin:2px 4px 14px;background:#F1F2F5;border-radius:12px;padding:4px}
+.view-seg button{flex:1;padding:9px 0;border:none;border-radius:9px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;background:transparent;color:#8A8F98;transition:all .18s}
+.view-seg button.on{background:linear-gradient(135deg,#EE4D2D,#FF6B47);color:#fff;box-shadow:0 4px 12px rgba(238,77,45,.28)}
+.nav-btn{display:flex;align-items:center;gap:11px;padding:11px 14px;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;width:100%;text-align:left;font-family:inherit;transition:all .18s;background:transparent;color:#6B7280}
+.nav-btn:hover{background:#F6F7F9}
+.nav-btn.active{background:linear-gradient(135deg,#EE4D2D,#FF6B47);color:#fff;box-shadow:0 4px 15px rgba(238,77,45,.25)}
+.nav-btn .ic{font-size:16px;width:20px;text-align:center}
+.synced{margin-top:8px;padding:9px 12px;border-radius:11px;font-size:11px;font-weight:700;background:#ECFDF5;color:#059669;display:flex;align-items:center;gap:7px}
+.synced .dot{width:7px;height:7px;border-radius:50%;background:#10B981;flex-shrink:0;box-shadow:0 0 0 3px rgba(16,185,129,.18)}
+.synced-time{font-size:10px;color:#9CA3AF;margin-top:6px;padding:0 4px}
+/* ── main ── */
+#main{flex:1;padding:22px 30px 40px;overflow-y:auto;max-height:100vh}
+.topbar{display:flex;align-items:center;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+.title-ic{width:46px;height:46px;border-radius:13px;background:linear-gradient(135deg,#FFF1ED,#FFE3DA);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;border:1px solid #FFD9CC}
+.h1{font-size:26px;font-weight:900;letter-spacing:-.6px;line-height:1.1}
+.h1-sub{font-size:13px;color:#8A8F98;font-weight:500;margin-top:2px}
+.topbar-right{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pill{display:flex;align-items:center;gap:8px;padding:9px 15px;border-radius:11px;border:1px solid #E5E7EB;background:#fff;font-size:12.5px;font-weight:700;color:#374151;cursor:pointer;font-family:inherit}
+.pill .cv{color:#9CA3AF;font-size:11px}
+select.pill{appearance:none;padding-right:30px;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239CA3AF' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.pill-primary{background:linear-gradient(135deg,#EE4D2D,#FF6B47);color:#fff;border:none;box-shadow:0 4px 12px rgba(238,77,45,.25)}
+/* ── cards ── */
+.card{background:#fff;border-radius:16px;border:1px solid #EAECEF;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:20px}
+.card-h{display:flex;align-items:center;gap:9px;margin-bottom:16px}
+.card-h .ic{font-size:15px}
+.card-h h3{font-size:14.5px;font-weight:800;letter-spacing:-.2px}
+.card-h .va{margin-left:auto;font-size:12px;font-weight:700;color:#EE4D2D;cursor:pointer;text-decoration:none}
+.section-label{font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#A2A7B0;margin:26px 2px 12px;display:flex;align-items:center;gap:8px}
+.section-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,#E5E7EB,transparent)}
+/* ── stat cards ── */
+.stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.stat{padding:18px 18px 16px;display:flex;flex-direction:column;gap:10px}
+.stat-top{display:flex;align-items:flex-start;justify-content:space-between}
+.stat-ic{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.stat-name{font-size:12px;font-weight:700;color:#6B7280;line-height:1.3}
+.stat-val{font-size:30px;font-weight:900;letter-spacing:-1px;line-height:1}
+.stat-val.sm{font-size:19px;line-height:1.15}
+.stat-delta{font-size:11.5px;font-weight:700;display:flex;align-items:center;gap:4px}
+.up{color:#059669}.down{color:#DC2626}.flat{color:#9CA3AF}
+.stat-foot{font-size:11px;color:#9CA3AF;font-weight:600}
+/* ── grids ── */
+.g4{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.g3{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:14px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grec{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+/* ── tables ── */
+table{width:100%;border-collapse:collapse}
+th{font-size:10.5px;font-weight:800;color:#A2A7B0;text-transform:uppercase;letter-spacing:.5px;text-align:left;padding:0 10px 10px;border-bottom:1px solid #EEF0F3}
+td{font-size:12.5px;padding:11px 10px;border-bottom:1px solid #F3F4F6;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.av{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;font-size:10px;font-weight:800;color:#fff;margin-right:8px;flex-shrink:0}
+.nm{font-weight:700}
+.tag{display:inline-block;padding:3px 10px;border-radius:20px;font-size:10.5px;font-weight:800}
+.bpo-tag{font-size:10px;font-weight:700;color:#6B7280}
+.scorechip{display:inline-block;padding:3px 11px;border-radius:8px;font-size:11.5px;font-weight:800}
+.wrongchip{display:inline-block;padding:4px 11px;border-radius:8px;font-size:11px;font-weight:700;background:#FEF2F2;color:#DC2626;border:1px solid #FECACA}
+/* ── lists ── */
+.lrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #F3F4F6}
+.lrow:last-child{border-bottom:none}
+.lrow .meta{flex:1;min-width:0}
+.lrow .nm2{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lrow .sub{font-size:10.5px;color:#9CA3AF;font-weight:600}
+.empty{text-align:center;padding:26px 10px;color:#B6BAC2;font-size:12.5px;font-weight:600}
+.empty .e-ic{font-size:26px;display:block;margin-bottom:6px;opacity:.6}
+/* ── heatmap ── */
+.heat-row{display:flex;align-items:center;gap:12px;margin-bottom:9px}
+.heat-name{width:148px;font-size:12px;font-weight:700;flex-shrink:0}
+.heat-bar{flex:1;height:24px;border-radius:7px;background:#F3F4F6;overflow:hidden;position:relative}
+.heat-fill{height:100%;border-radius:7px;display:flex;align-items:center;padding-left:10px;color:#fff;font-size:11px;font-weight:800;min-width:44px}
+.heat-n{font-size:10.5px;color:#9CA3AF;font-weight:700;width:60px;flex-shrink:0;text-align:right}
+/* ── donut / spark ── */
+.donut-wrap{position:relative;width:64px;height:64px;flex-shrink:0}
+.spark{display:block}
+.trend-mini{display:flex;align-items:flex-end;gap:3px;height:30px}
+.trend-mini span{flex:1;border-radius:2px 2px 0 0;min-height:3px}
+.note{font-size:11px;color:#9CA3AF;font-weight:600;background:#F9FAFB;border:1px dashed #E5E7EB;border-radius:9px;padding:8px 12px;margin-top:12px;display:flex;gap:7px;align-items:flex-start}
+.footer-note{text-align:center;color:#B6BAC2;font-size:11.5px;font-weight:600;margin-top:24px;display:flex;align-items:center;justify-content:center;gap:7px}
+@media(max-width:1180px){.stat-grid{grid-template-columns:repeat(2,1fr)}.g3,.g2,.grec{grid-template-columns:1fr}.g4{grid-template-columns:1fr}}
+/* ── period sub-tabs (Home › month › quiz) ── */
+.period-bar{background:#fff;border:1px solid #E9EBEF;border-radius:16px;padding:12px 14px;margin-bottom:20px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.pb-head{display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#A2A7B0;margin-bottom:10px}
+.pb-head .crumb{color:#EE4D2D}
+.month-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.month-tabs::-webkit-scrollbar{height:5px}.month-tabs::-webkit-scrollbar-thumb{background:#E0E2E7;border-radius:6px}
+.month-tab{flex:0 0 auto;padding:8px 14px;border:1px solid #E5E7EB;border-radius:10px;background:#fff;font-size:12px;font-weight:700;color:#6B7280;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .16s}
+.month-tab:hover{border-color:#F2B7AB;color:#EE4D2D}
+.month-tab.on{background:linear-gradient(135deg,#EE4D2D,#FF6B47);color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(238,77,45,.24)}
+.quiz-seg{display:flex;gap:6px;margin-top:12px;align-items:center}
+.quiz-seg .qlabel{font-size:11px;font-weight:800;color:#A2A7B0;letter-spacing:.4px;margin-right:4px}
+.quiz-pill{padding:7px 16px;border:1.5px solid #E5E7EB;border-radius:9px;background:#fff;font-size:12px;font-weight:800;color:#6B7280;cursor:pointer;font-family:inherit;transition:all .16s}
+.quiz-pill:hover{border-color:#F2B7AB}
+.quiz-pill.on{background:#FFF1ED;border-color:#EE4D2D;color:#EE4D2D}
+.quiz-pill[disabled]{opacity:.4;cursor:not-allowed}
+/* ── sidebar month sub-nav (below Home) ── */
+.month-nav{display:flex;flex-direction:column;gap:2px;margin:2px 0 6px 0;padding:6px 0 6px 14px;border-left:2px solid #F0E3DF;margin-left:16px;max-height:340px;overflow-y:auto}
+.month-link{text-align:left;border:none;background:transparent;font-family:inherit;font-size:12px;font-weight:700;color:#8A8F98;padding:7px 12px;border-radius:9px;cursor:pointer;transition:all .14s;white-space:nowrap}
+.month-link:hover{background:#F6F7F9;color:#EE4D2D}
+.month-link.on{background:#FFF1ED;color:#EE4D2D}
+.year-btn{display:flex;align-items:center;gap:7px;width:100%;text-align:left;border:none;background:transparent;font-family:inherit;font-size:11px;font-weight:800;letter-spacing:.4px;color:#A2A7B0;padding:7px 10px 5px;border-radius:8px;cursor:pointer;text-transform:uppercase}
+.year-btn:hover{color:#EE4D2D}
+.year-btn.has-sel{color:#6B7280}
+.year-btn .yr-caret{font-size:9px;width:10px}
+.year-btn .yr-count{margin-left:auto;font-size:9px;background:#F0F1F4;color:#8A8F98;border-radius:10px;padding:1px 7px;font-weight:800}
+.year-group{display:flex;flex-direction:column;gap:2px;margin:0 0 4px 4px;padding-left:8px;border-left:2px solid #F0E3DF}
+/* ── slim quiz filter bar (top of Home content) ── */
+.quiz-filter{display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.quiz-filter .qlabel{font-size:11.5px;font-weight:800;color:#6B7280;letter-spacing:.3px}
+.quiz-filter .qsep{width:1px;height:18px;background:#E5E7EB;margin:0 4px}
+/* ── raw data + admin tabs ── */
+.panel{background:#fff;border:1px solid #E9EBEF;border-radius:16px;padding:22px;margin-bottom:18px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.panel h3{font-size:14px;font-weight:800;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.panel .sub{font-size:12px;color:#8A8F98;font-weight:500;margin-bottom:16px}
+.dropzone{border:2px dashed #E0C3BA;border-radius:14px;padding:34px 20px;text-align:center;background:#FFFAF8;cursor:pointer;transition:all .18s}
+.dropzone:hover,.dropzone.drag{border-color:#EE4D2D;background:#FFF1ED}
+.dropzone .big{font-size:34px;margin-bottom:8px}
+.dropzone .t1{font-size:14px;font-weight:800;color:#EE4D2D}
+.dropzone .t2{font-size:12px;color:#9CA3AF;font-weight:600;margin-top:4px}
+.umsg{margin-top:14px;font-size:12.5px;font-weight:700;padding:11px 14px;border-radius:11px;display:none}
+.umsg.ok{display:block;background:#ECFDF5;color:#059669;border:1px solid #A7F3D0}
+.umsg.err{display:block;background:#FEF2F2;color:#DC2626;border:1px solid #FECACA}
+.umsg.info{display:block;background:#F0F9FF;color:#0369A1;border:1px solid #BAE6FD}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:6px}
+.kpi{background:#FAFBFC;border:1px solid #EEF0F3;border-radius:13px;padding:15px}
+.kpi .v{font-size:24px;font-weight:900;letter-spacing:-1px}
+.kpi .l{font-size:11px;font-weight:700;color:#8A8F98;text-transform:uppercase;letter-spacing:.5px;margin-top:3px}
+.kpi.accent .v{color:#EE4D2D}
+.dtable{width:100%;border-collapse:collapse;font-size:12.5px}
+.dtable th{text-align:left;padding:8px 10px;color:#8A8F98;font-weight:800;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #EEF0F3}
+.dtable td{padding:9px 10px;border-bottom:1px solid #F4F5F7;font-weight:600}
+.changelog{position:relative;padding-left:8px}
+.cl-item{position:relative;padding:0 0 16px 22px;border-left:2px solid #F0E3DF}
+.cl-item:last-child{border-left-color:transparent}
+.cl-item::before{content:'';position:absolute;left:-7px;top:2px;width:12px;height:12px;border-radius:50%;background:#EE4D2D;border:2px solid #fff;box-shadow:0 0 0 2px #F2B7AB}
+.cl-ver{font-size:13px;font-weight:900;color:#EE4D2D}
+.cl-date{font-size:11px;color:#9CA3AF;font-weight:700;margin-left:8px}
+.cl-item ul{margin:6px 0 0 16px;font-size:12.5px;color:#4B5563;font-weight:500}
+.cl-item li{margin:2px 0}
+.kpi-row.k2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:1180px){.kpi-row{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <div class="logo-row">
+    <div class="logo-icon"><svg width="38" height="38" viewBox="0 0 120 120" fill="none"><rect width="120" height="120" fill="#fff"/><path d="M60 16c-8 0-15 4.5-18.5 11.2h37C75 20.5 68 16 60 16z" fill="#EE4D2D"/><path d="M41 26h-1.5c-.5 0-1 .1-1.4.3A27.5 27.5 0 0032 28v.5l3 56c.3 5 4.5 9 9.5 9h31c5 0 9.2-4 9.5-9l3-56V28a27 27 0 00-6-1.7c-.5-.2-1-.3-1.5-.3H79" fill="#EE4D2D"/><text x="60" y="72" text-anchor="middle" fill="#fff" font-weight="900" font-size="38" font-family="Arial">S</text></svg></div>
+    <div><div class="logo-title">Quiz Dashboard</div><div class="logo-sub">Return &amp; Refund</div></div>
+  </div>
+  <div class="view-seg" id="view-seg"></div>
+  <div id="nav"></div>
+  <div style="flex:1"></div>
+  <div id="nav-admin"></div>
+  <div class="synced"><span class="dot"></span><span>Synced</span></div>
+  <div class="synced-time" id="synced-time"></div>
+</div>
+<div id="main"></div>
+<script>
+/* ════════════ EMBEDDED MASTER DATA (from Monthly Recap Quiz) ════════════ */
+const RAW_ROWS = [];   // source-only: data comes from the backend
+
+/* ===== aggregator (raw rows -> DATA) ===== */
+/* ===== Quiz Dashboard aggregator: flat raw rows -> {dms,l2rr,p1} DATA =====
+   Produces BOTH quiz-level periods (#1/#2) and month-level periods ("All").
+   Each row: {view, month, quiz, name, email, bpo, tl, score(0-100 or 0-1), status, topic?} */
+const QD_PASS = 80;
+const QD_MONTHS = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12,
+  january:1,february:2,march:3,april:4,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
+function qdMo(month){ const mm=String(month).toLowerCase().match(/[a-z]+/); if(mm&&QD_MONTHS[mm[0]])return QD_MONTHS[mm[0]]; const d=String(month).match(/-(\d{1,2})/); return d?+d[1]:1; }
+function qdYr(month){ const m=String(month).match(/(20\d{2})/); return m?+m[1]:2025; }
+function qdQuizPorder(month,quiz){ return qdYr(month)*100 + qdMo(month)*2 + ((+quiz||1)-1); }
+function qdMonthPorder(month){ return qdYr(month)*100 + qdMo(month)*2; }
+function qdMonthLabel(month){ const n=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return `${n[qdMo(month)]} ${qdYr(month)}`; }
+function qdQuizLabel(month,quiz){ return `${qdMonthLabel(month)} #${+quiz||1}`; }
+const qdMean = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : 0;
+const qdR1 = x => Math.round(x*10)/10;
+function qdNormView(v){ const t=String(v||'').toLowerCase(); if(t.includes('l2rr'))return 'l2rr'; if(/\bp1\b/.test(t)||t==='p1')return 'p1'; return 'dms'; }
+function qdNormBpo(b){ const t=String(b||'').toLowerCase(); if(t.startsWith('eperf')||t==='ep')return 'ePerformax'; if(t.startsWith('vads'))return 'Vads'; if(t.startsWith('ph'))return 'ePerformax'; return b||'ePerformax'; }
+
+function qdNormRows(rawRows){
+  const rows = rawRows.map(r=>{
+    const month=r.month!=null?r.month:r.Month, quiz=r.quiz!=null?r.quiz:(r.Quiz!=null?r.Quiz:1);
+    let sc=r.score!=null?r.score:r.Score; sc=parseFloat(sc); if(sc<=1) sc=sc*100;
+    const st=String(r.status!=null?r.status:(r.Status||'')).trim().toLowerCase();
+    const passed = st ? (st.includes('pass') && !st.includes('not')) : (sc>=QD_PASS);
+    const email=String(r.email!=null?r.email:(r.Email||'')).trim().toLowerCase();
+    return { view:qdNormView(r.view!=null?r.view:r.View),
+      month:String(month||'').trim(), half:(+quiz||1),
+      name:String(r.name!=null?r.name:(r.Name||r['First Name']||'')).trim(),
+      email,
+      bpo:qdNormBpo(r.bpo!=null?r.bpo:r.BPO),
+      tl:String(r.tl!=null?r.tl:(r['Team Lead']||r.TL||'')).trim(),   // raw_data column N
+      atype:String(r.atype!=null?r.atype:(r['Agent Type']||r.agent_type||'')).trim(),
+      score:sc, passed, topic:String(r.topic!=null?r.topic:(r.Topic||'')).trim() };
+  }).filter(r=>r.email && r.email.includes('@') && !isNaN(r.score));
+  // backfill: an agent's TL (col N) and agent type apply to every one of their rows
+  const tlOf={}, atOf={};
+  rows.forEach(r=>{ if(r.tl && !tlOf[r.email]) tlOf[r.email]=r.tl; if(r.atype && !atOf[r.email]) atOf[r.email]=r.atype; });
+  rows.forEach(r=>{ if(!r.tl && tlOf[r.email]) r.tl=tlOf[r.email]; if(!r.atype && atOf[r.email]) r.atype=atOf[r.email]; });
+  return rows;
+}
+
+function qdBuildView(av0, porderOf, labelOf){
+  const av = av0.map(r=>Object.assign({}, r, {porder:porderOf(r)}));
+  const periods=[...new Set(av.map(a=>a.porder))].sort((a,b)=>a-b);
+  const plabels={}; av.forEach(a=>{ plabels[a.porder]=labelOf(a); });
+  const byAgent={}; av.forEach(a=>{ (byAgent[a.email]=byAgent[a.email]||[]).push(a); });
+  for(const e in byAgent) byAgent[e].sort((x,y)=>x.porder-y.porder);
+  const disp=e=>byAgent[e][byAgent[e].length-1].name || e.split('@')[0];
+  const bpoOf=e=>byAgent[e][byAgent[e].length-1].bpo;
+  const P=L=>L.length?qdR1(100*L.filter(a=>a.passed).length/L.length):null;
+  const S=L=>L.length?qdR1(100*qdMean(L.map(a=>a.score/100))):null;
+  function compute(target){
+    const idx=periods.indexOf(target), prev=idx>0?periods[idx-1]:null;
+    const cur=av.filter(a=>a.porder===target), prevA=prev!=null?av.filter(a=>a.porder===prev):[];
+    const win=periods.slice(Math.max(0,idx-2),idx+1);
+    const roster=[...new Set(av.filter(a=>win.includes(a.porder)).map(a=>a.email))].sort();
+    const ce=new Set(cur.map(a=>a.email));
+    const coaching=[];
+    cur.forEach(a=>{ const e=a.email, hist=byAgent[e].filter(h=>h.porder<=target);
+      if(a.score<QD_PASS) coaching.push({name:disp(e),bpo:bpoOf(e),latest:Math.round(a.score),
+        avg:Math.round(qdMean(hist.map(h=>h.score))),fails:hist.filter(h=>!h.passed).length,
+        attempts:hist.length,risk:a.score<60?'High':'Medium',tl:a.tl}); });
+    coaching.sort((x,y)=> (x.risk!=='High')-(y.risk!=='High') || x.latest-y.latest);
+    const not_att=[];
+    roster.forEach(e=>{ if(!ce.has(e)){ const hist=byAgent[e].filter(h=>h.porder<=target); const last=hist[hist.length-1]||byAgent[e][0];
+      not_att.push({name:disp(e),bpo:bpoOf(e),lastseen:plabels[last.porder],lastscore:Math.round(last.score),tl:last.tl}); } });
+    const recent4=new Set(periods.slice(Math.max(0,idx-3),idx+1));
+    const repeat=[];
+    Object.keys(byAgent).forEach(e=>{ const hist=byAgent[e].filter(h=>h.porder<=target);
+      const fails=hist.filter(h=>!h.passed && recent4.has(h.porder));
+      if(fails.length>=2){ const rh=hist.filter(h=>recent4.has(h.porder));
+        repeat.push({name:disp(e),bpo:bpoOf(e),fails:fails.length,attempts:rh.length,avg:Math.round(qdMean(rh.map(h=>h.score))),tl:byAgent[e][byAgent[e].length-1].tl}); } });
+    repeat.sort((x,y)=>y.fails-x.fails);
+    const dropped=[];
+    Object.keys(byAgent).forEach(e=>{ const hist=byAgent[e].filter(h=>h.porder<=target); if(hist.length<2)return;
+      const last=hist[hist.length-1], pr=hist[hist.length-2], d=last.score-pr.score;
+      if(d<=-20 && last.porder===target) dropped.push({name:disp(e),bpo:bpoOf(e),prev:Math.round(pr.score),now:Math.round(last.score),drop:Math.round(d),tl:last.tl}); });
+    dropped.sort((x,y)=>x.drop-y.drop);
+    const top=[]; const seen=new Set();
+    cur.slice().sort((a,b)=>b.score-a.score).forEach(a=>{ const e=a.email; if(seen.has(e))return; seen.add(e);
+      const hist=byAgent[e].filter(h=>h.porder<=target);
+      top.push({name:disp(e),bpo:bpoOf(e),avg:Math.round(qdMean(hist.map(h=>h.score))),latest:Math.round(a.score),attempts:hist.length}); });
+    const topF=top.filter(t=>t.latest>=90).slice(0,6);
+    const improved=[];
+    Object.keys(byAgent).forEach(e=>{ const hist=byAgent[e].filter(h=>h.porder<=target); if(hist.length<2||hist[hist.length-1].porder!==target)return;
+      const fa=qdMean(hist.slice(0,Math.max(1,Math.floor(hist.length/2))).map(h=>h.score));
+      const la=qdMean(hist.slice(Math.floor(hist.length/2)).map(h=>h.score));
+      if(la-fa>5) improved.push({name:disp(e),bpo:bpoOf(e),prev:Math.round(fa),cur:Math.round(la),imp:Math.round(la-fa)}); });
+    improved.sort((x,y)=>y.imp-x.imp); const improvedF=improved.slice(0,6);
+    const bpos=[...new Set(av.map(a=>a.bpo))].sort(); const tail=periods.slice(Math.max(0,idx-5),idx+1);
+    const bpoRows=[];
+    bpos.forEach(b=>{ const bc=cur.filter(a=>a.bpo===b); if(!bc.length)return;
+      const trend=[]; tail.forEach(p=>{ const pa=av.filter(a=>a.bpo===b&&a.porder===p); if(pa.length)trend.push(Math.round(100*pa.filter(x=>x.passed).length/pa.length)); });
+      bpoRows.push({bpo:b,pass_rate:P(bc),avg:S(bc),completed:bc.length,
+        roster:new Set(av.filter(a=>a.bpo===b&&win.includes(a.porder)).map(a=>a.email)).size,trend}); });
+    const tlMap={};
+    roster.forEach(e=>{ const t=byAgent[e][byAgent[e].length-1].tl; if(t)(tlMap[t]=tlMap[t]||[]).push(e); });
+    const tlRows=[];
+    Object.keys(tlMap).forEach(t=>{ const emails=tlMap[t]; const ca=cur.filter(a=>emails.includes(a.email));
+      const ls=ca.length?ca:emails.map(e=>byAgent[e][byAgent[e].length-1]).filter(Boolean); if(!ls.length)return;
+      tlRows.push({tl:t,agents:emails.length,pass_rate:P(ls),avg:S(ls)||0,hr:ls.filter(a=>a.score<70||!a.passed).length}); });
+    tlRows.sort((x,y)=>(y.pass_rate||0)-(x.pass_rate||0));
+    // agent type comparison (from Overall Score tab mapping)
+    const types=[...new Set(av.filter(a=>a.atype).map(a=>a.atype))].sort();
+    const atRows=[];
+    types.forEach(t=>{ const tc=cur.filter(a=>a.atype===t); if(!tc.length)return;
+      atRows.push({atype:t,pass_rate:P(tc),avg:S(tc),completed:tc.length,
+        roster:new Set(av.filter(a=>a.atype===t&&win.includes(a.porder)).map(a=>a.email)).size}); });
+    atRows.sort((x,y)=>(y.pass_rate||0)-(x.pass_rate||0));
+    const trend=[]; periods.slice(Math.max(0,idx-6),idx+1).forEach(p=>{ const pa=av.filter(a=>a.porder===p);
+      trend.push({label:plabels[p].replace(' 20','\u2019').replace('#',''),pass_rate:qdR1(100*pa.filter(x=>x.passed).length/pa.length)}); });
+    return {period:plabels[target],prev_period:prev!=null?plabels[prev]:null,n_attempts:cur.length,
+      pass_rate:P(cur),avg_score:S(cur),completion:qdR1(100*[...ce].filter(e=>roster.includes(e)).length/Math.max(roster.length,1)),
+      high_risk:cur.filter(a=>a.score<70||!a.passed).length,roster:roster.length,completed:ce.size,
+      prev_pass:P(prevA),prev_avg:S(prevA),coaching,not_att,repeat,dropped,top:topF,improved:improvedF,bpo:bpoRows,tl:tlRows,at:atRows,trend};
+  }
+  const data={}, plist=[];
+  periods.forEach(p=>{ data[String(p)]=compute(p); const any=av.find(a=>a.porder===p); plist.push({porder:p,label:plabels[p],month:any.month,half:any.half}); });
+  return {periods:plist,latest:periods[periods.length-1],n_periods:periods.length,data};
+}
+
+function qdAggregate(rawRows){
+  const rows=qdNormRows(rawRows);
+  const out={};
+  for(const V of ['dms','l2rr','p1']){
+    const av=rows.filter(r=>r.view===V);
+    if(!av.length){ out[V]=null; continue; }
+    const withTopic=av.filter(a=>a.topic);
+    let heat=[], most='\u2014', mostRate=0, hasQ=false;
+    if(withTopic.length){
+      const tstat={}; withTopic.forEach(a=>{ (tstat[a.topic]=tstat[a.topic]||[0,0]); tstat[a.topic][1]++; if(a.passed)tstat[a.topic][0]++; });
+      heat=Object.keys(tstat).map(t=>{ const [c,n]=tstat[t]; const cr=n?Math.round(100*c/n):0; return {topic:t,correct:cr,fail:100-cr,n}; });
+      heat.sort((a,b)=>b.fail-a.fail);
+      if(heat.length){ most=heat[0].topic; mostRate=heat[0].fail; hasQ=true; }
+    }
+    const kg={questions:[],heat,has_q:hasQ,most_failed_sop:most,most_failed_sop_rate:mostRate};
+    const quizV  = qdBuildView(av, r=>qdQuizPorder(r.month,r.half), r=>qdQuizLabel(r.month,r.half));
+    const monthV = qdBuildView(av, r=>qdMonthPorder(r.month),       r=>qdMonthLabel(r.month));
+    const months=[]; const seenM=new Set();
+    quizV.periods.slice().sort((a,b)=>a.porder-b.porder).forEach(p=>{ if(!seenM.has(p.month)){seenM.add(p.month);months.push({month:p.month,porder:qdMonthPorder(p.month)});} });
+    out[V]={ periods:quizV.periods, latest:quizV.latest, data:quizV.data, n_periods:quizV.n_periods,
+             months, monthData:monthV.data, monthLatest:monthV.latest, kg };
+  }
+  return out;
+}
+
+let RAW = RAW_ROWS;
+const QUESTIONS = [];          // offline fallback; live question rows arrive from the backend
+let QUIZ_Q = QUESTIONS.slice();
+let API_URL = "";              // optional default; can also be set in Admin → Backend
+let BACKEND = { status:'local', when:null, err:null };
+let DATA = qdAggregate(RAW);
+const VER = 'v6';
+const VERSIONS = [
+  { ver:'v6', label:'Version 6', date:'4 Jun 2026', current:true, updates:[
+    {cat:'🗑️ Data', text:'Removed all baked-in data — the dashboard now loads only from the connected source (Apps Script, Firebase, or Supabase).'},
+    {cat:'🔌 Feature', text:'Backend tab now supports all three sources and an optional API key (used by Supabase); shows a connect prompt until a source is set.'},
+    {cat:'🔄 Data', text:'Agent type is now read from the backend rows instead of a built-in lookup.'}
+  ]},
+  { ver:'v5', label:'Version 5', date:'4 Jun 2026', updates:[
+    {cat:'🔌 Feature', text:'Live backend support — connect a Google Apps Script web app (Admin → Backend) and the dashboard loads agent rows and quiz questions straight from the master sheet on every open.'},
+    {cat:'📊 Dashboard', text:'Knowledge Gap (most-failed questions, most-selected wrong answers, SOP topic heatmap) now renders from per-question data fed by the LMS export.'},
+    {cat:'🔄 Data', text:'Falls back to the built-in baked data when no backend is configured or the connection fails, so it always works offline.'}
+  ]},
+  { ver:'v4', label:'Version 4', date:'4 Jun 2026', updates:[
+    {cat:'📋 Layout', text:'Home now auto-collapses the year groups, opening only the year of the selected month.'},
+    {cat:'📊 Dashboard', text:'Added a Pass Rate Trend chart to the Health Summary, plotting pass rate over the last several quiz periods.'},
+    {cat:'✅ Feature', text:'Added an Agent Type Comparison (Flow A/B/C · Seasoned / Nesting) under Performance by Group, mapped from the Overall Score tab.'},
+    {cat:'🔄 Data', text:'Team Lead grouping now follows raw_data column N, with each agent\u2019s known TL back-filled across all their rows.'},
+    {cat:'🗑️ Removed', text:'Removed the "Agents Not Attempted" card from Action Needed.'}
+  ]},
+  { ver:'v3', label:'Version 3', date:'4 Jun 2026', updates:[
+    {cat:'📋 Layout', text:'Sidebar months are now grouped by year (2025 / 2026) with collapsible year buttons.'},
+    {cat:'⚙️ Admin', text:'Rebuilt the Admin tab to match the WJ Dashboard — Version Updates, User Stats and Traffic sub-tabs.'},
+    {cat:'🔄 Layout', text:'Admin button moved to the bottom of the sidebar.'}
+  ]},
+  { ver:'v2', label:'Version 2', date:'4 Jun 2026', updates:[
+    {cat:'📊 Data', text:'Dashboard is now built directly from the raw_data sheet of the master file.'},
+    {cat:'📋 Layout', text:'Month sub-tabs moved into the sidebar, below Home.'},
+    {cat:'✅ Feature', text:'Added an "All" quiz filter (combines Quiz #1 and #2 for the whole month).'},
+    {cat:'🗑️ Removed', text:'Removed the separate Raw Data upload tab.'}
+  ]},
+  { ver:'v1', label:'Version 1', date:'4 Jun 2026', updates:[
+    {cat:'✅ Feature', text:'First release — DMS / L2RR / P1 views, per-month and per-quiz breakdowns.'},
+    {cat:'📊 Dashboard', text:'Health Summary, Action Needed, Knowledge Gap, Performance by Group, Recognition.'},
+    {cat:'⚙️ Admin', text:'Admin tab with traffic, data stats and version history.'}
+  ]}
+];
+const VIEWS = [['dms','DMS'],['l2rr','L2RR'],['p1','P1']];
+let S = { view:'dms', page:'home', month:null, quiz:null, bpo:'All', tl:'All', adminSub:'changelog', openYears:null, _trafficExclude:'' };  // quiz: 'all' | 1 | 2
+let O = null;       // currently-rendered merged period object (period data + cumulative KG)
+let ANIMATE = true; // controls the fade-in; off for in-page filter changes (prevents flicker)
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const initials = n => { const p=String(n||'?').replace(/,/g,'').trim().split(/\s+/); return ((p[0]||'?')[0]+(p[1]||'')[0]||'').toUpperCase(); };
+const avColors = ['#EE4D2D','#2563EB','#7C3AED','#059669','#D97706','#DB2777','#0891B2','#65A30D'];
+const avColor = n => avColors[(String(n).split('').reduce((a,c)=>a+c.charCodeAt(0),0))%avColors.length];
+const bpoColor = b => b==='Vads'?'#EE4D2D':b==='ePerformax'?'#2563EB':'#059669';
+const scoreColor = s => s>=90?['#059669','#ECFDF5']:s>=80?['#0891B2','#ECFEFF']:s>=60?['#D97706','#FFFBEB']:['#DC2626','#FEF2F2'];
+const riskTag = r => r==='High'?'<span class="tag" style="background:#FEF2F2;color:#DC2626">High</span>':r==='Medium'?'<span class="tag" style="background:#FFFBEB;color:#D97706">Medium</span>':'<span class="tag" style="background:#ECFDF5;color:#059669">Low</span>';
+
+function delta(now, prev, unit){
+  if(prev==null) return `<span class="stat-delta flat">— no prior period</span>`;
+  const d = Math.round((now-prev)*10)/10;
+  if(d===0) return `<span class="stat-delta flat">▬ no change vs ${esc(O.prev_period)}</span>`;
+  const cls = d>0?'up':'down', ar = d>0?'▲':'▼';
+  return `<span class="stat-delta ${cls}">${ar} ${Math.abs(d)}${unit} vs ${esc(O.prev_period)}</span>`;
+}
+function donut(pct){
+  const r=26,c=2*Math.PI*r,off=c*(1-pct/100);
+  return `<div class="donut-wrap"><svg width="64" height="64" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="${r}" fill="none" stroke="#F0F1F4" stroke-width="8"/>
+    <circle cx="32" cy="32" r="${r}" fill="none" stroke="#10B981" stroke-width="8" stroke-linecap="round"
+      stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 32 32)"/></svg></div>`;
+}
+function sparkline(arr,color){
+  if(!arr||arr.length<2) return '';
+  const w=92,h=30,mn=Math.min(...arr),mx=Math.max(...arr),rg=(mx-mn)||1;
+  const pts=arr.map((v,i)=>`${(i/(arr.length-1))*w},${h-((v-mn)/rg)*(h-6)-3}`).join(' ');
+  const last=arr[arr.length-1]>=arr[0];
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <polyline points="${pts}" fill="none" stroke="${color||(last?'#10B981':'#EF4444')}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="${pts.split(' ').slice(-1)[0].split(',')[0]}" cy="${pts.split(' ').slice(-1)[0].split(',')[1]}" r="2.6" fill="${color||(last?'#10B981':'#EF4444')}"/></svg>`;
+}
+
+/* ════════════ SIDEBAR ════════════ */
+// quizzes available for a month label, sorted by half
+function quizzesIn(view, month){ return DATA[view].periods.filter(p=>p.month===month).map(p=>p.half).sort((a,b)=>a-b); }
+function ensureSel(){
+  const view=DATA[S.view]; if(!view) return;
+  const monthLabels=view.months.map(m=>m.month);
+  if(!S.month || !monthLabels.includes(S.month)) S.month = monthLabels[monthLabels.length-1]; // latest month
+  const halves=quizzesIn(S.view,S.month);
+  if(S.quiz!=='all' && !halves.includes(S.quiz)) S.quiz = halves.length?halves[halves.length-1]:'all';
+  if(S.quiz==null) S.quiz = halves.length?halves[halves.length-1]:'all';
+  // auto-collapse: open only the year of the selected month
+  if(S.openYears===null){ S.openYears={}; S.openYears[qdYr(S.month)]=true; }
+}
+function renderSidebar(){
+  $('#view-seg').innerHTML = VIEWS.map(([k,l])=>
+    `<button class="${S.view===k?'on':''}" onclick="setView('${k}')">${l}</button>`).join('');
+  ensureSel();
+  const view=DATA[S.view];
+  // ── main nav: Home + year-grouped months ──
+  let html = `<button class="nav-btn ${S.page==='home'?'active':''}" onclick="setPage('home')"><span class="ic">📊</span><span>Home</span></button>`;
+  if(S.page==='home' && view){
+    // group months by year (descending year, descending month within)
+    const byYear={}; view.months.forEach(m=>{ (byYear[qdYr(m.month)]=byYear[qdYr(m.month)]||[]).push(m.month); });
+    const years=Object.keys(byYear).map(Number).sort((a,b)=>b-a);
+    html += `<div class="month-nav">` + years.map(y=>{
+      const open = S.openYears[y]!==false;
+      const months = byYear[y].slice().sort((a,b)=>qdMo(b)-qdMo(a));
+      const hasSel = months.includes(S.month);
+      return `<button class="year-btn ${hasSel?'has-sel':''}" onclick="toggleYear(${y})">
+          <span class="yr-caret">${open?'▾':'▸'}</span><span>${y}</span><span class="yr-count">${months.length}</span></button>
+        <div class="year-group" style="${open?'':'display:none'}">` +
+        months.map(m=>`<button class="month-link ${m===S.month?'on':''}" onclick="selectMonth('${esc(m)}')">${esc(m)}</button>`).join('') +
+        `</div>`;
+    }).join('') + `</div>`;
+  }
+  $('#nav').innerHTML = html;
+  // ── bottom slot: Admin ──
+  $('#nav-admin').innerHTML = `<button class="nav-btn ${S.page==='admin'?'active':''}" onclick="setPage('admin')"><span class="ic">⚙️</span><span>Admin</span></button>`;
+  const d=new Date();
+  $('#synced-time').textContent = 'Last synced: '+d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+', '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
+function toggleYear(y){ S.openYears[y] = S.openYears[y]===false; ANIMATE=false; renderSidebar(); }
+function setPage(p){ S.page=p; ANIMATE=true; renderSidebar(); render(); window.scrollTo(0,0); }
+function setView(v){ S.view=v; S.month=null; S.quiz=null; S.bpo='All'; S.tl='All'; S.openYears=null; ANIMATE=true; renderSidebar(); render(); }
+function selectMonth(m){ S.month=m; S.bpo='All'; S.tl='All'; ANIMATE=false; renderSidebar(); render(); }
+function setQuiz(q){ S.quiz=(q==='all'?'all':+q); S.bpo='All'; S.tl='All'; ANIMATE=false; render(); }
+function rerender(){ ANIMATE=false; render(); }   // used by filters — no fade, no flicker
+const fade = () => ANIMATE ? 'fadeUp' : '';
+
+/* ════════════ MAIN RENDER ════════════ */
+function curMetrics(view){
+  // returns the metrics object for the selected month + quiz filter
+  if(S.quiz==='all'){ const k=String(qdMonthPorder(S.month)); return view.monthData[k]; }
+  const k=String(qdQuizPorder(S.month, S.quiz));
+  return view.data[k] || view.monthData[String(qdMonthPorder(S.month))];
+}
+function buildKG(){
+  // Knowledge Gap for the current view + month + quiz, from live/baked question rows
+  if(!QUIZ_Q || !QUIZ_Q.length) return null;
+  const nv=v=>{const t=String(v||'').toLowerCase(); return t.includes('l2rr')?'l2rr':/\bp1\b/.test(t)?'p1':'dms';};
+  const rows=QUIZ_Q.filter(q=> nv(q.view)===S.view
+      && String(q.month||'').trim()===S.month
+      && (S.quiz==='all' || (+q.quiz||1)===S.quiz));
+  if(!rows.length) return null;
+  const questions=rows.map(q=>{
+    const ans=+q.answered||0, cor=+q.correct_count||0, fail=ans?Math.round(100*(ans-cor)/ans):0;
+    const txt=String(q.question||('Q'+(q.q_no||''))).replace(/\s+/g,' ').trim();
+    return { short: txt.length>78?txt.slice(0,78)+'…':txt, topic:String(q.topic||'Untagged').trim()||'Untagged',
+             fail, n:ans, wrong:String(q.most_wrong||'').trim() };
+  }).sort((a,b)=>b.fail-a.fail);
+  const tg={}; questions.forEach(q=>{ (tg[q.topic]=tg[q.topic]||[0,0]); tg[q.topic][0]+=q.fail*q.n; tg[q.topic][1]+=q.n; });
+  const heat=Object.keys(tg).map(t=>{ const [fw,n]=tg[t]; return {topic:t,fail:n?Math.round(fw/n):0,n}; }).sort((a,b)=>b.fail-a.fail);
+  return { questions, heat, has_q:true, most_failed_sop: heat.length?heat[0].topic:'\u2014', most_failed_sop_rate: heat.length?heat[0].fail:0 };
+}
+function apiUrl(){ try{ return localStorage.getItem('qd_api_url') || API_URL || ''; }catch(e){ return API_URL||''; } }
+function apiKey(){ try{ return localStorage.getItem('qd_api_key') || ''; }catch(e){ return ''; } }
+function boot(){ renderSidebar(); render(); }
+async function refreshFromBackend(){
+  const u=apiUrl(); if(!u){ BACKEND={status:'local',when:null,err:null}; return; }
+  BACKEND={status:'connecting',when:null,err:null}; if(S.page==='admin')render();
+  try{
+    // Apps Script & Firebase RTDB need no key; Supabase needs apikey + Bearer. Send the key only when present.
+    const key=apiKey(); const headers={}; if(key){ headers['apikey']=key; headers['Authorization']='Bearer '+key; }
+    const sep=u.includes('?')?'&':'?';
+    const url = u.includes('script.google.com') ? (u+sep+'mode=data') : u;   // Apps Script uses ?mode=data; others return {rows,questions} directly
+    const res=await fetch(url,{redirect:'follow',headers});
+    const j=await res.json();
+    if(Array.isArray(j.rows)){ RAW=j.rows; DATA=qdAggregate(RAW); }
+    if(Array.isArray(j.questions)){ QUIZ_Q=j.questions; }
+    BACKEND={status:'live',when:j.generated||new Date().toISOString(),err:null};
+  }catch(e){ BACKEND={status:'error',when:null,err:String(e&&e.message||e)}; }
+  boot();
+}
+function render(){
+  const main = $('#main');
+  if(S.page==='admin'){ main.innerHTML = renderAdmin(); return; }
+  const view = DATA[S.view];
+  if(!view){ main.innerHTML = `<div class="empty" style="margin-top:80px"><span class="e-ic">🔌</span>No data yet — open <b>Admin → 🔌 Backend</b> and connect your source to load quizzes.</div>`; return; }
+  ensureSel();
+  const o = Object.assign({}, curMetrics(view), view.kg, buildKG()||{}, { n_periods: view.n_periods });
+  O = o;
+  const bpoNames = ['All', ...o.bpo.map(b=>b.bpo)];
+  const tlNames = ['All', ...o.tl.map(t=>t.tl)];
+
+  main.innerHTML = `
+  <div class="topbar ${fade()}">
+    <div class="title-ic">📋</div>
+    <div>
+      <div class="h1">Quiz Dashboard</div>
+      <div class="h1-sub">Overview of agent quiz performance — ${esc(o.period)}</div>
+    </div>
+    <div class="topbar-right">
+      <div class="pill"><span>📅</span><span>${esc(o.period)}</span></div>
+      <select class="pill" onchange="S.bpo=this.value;rerender()">${bpoNames.map(b=>`<option ${b===S.bpo?'selected':''}>${b==='All'?'All BPOs':esc(b)}</option>`).join('')}</select>
+      <select class="pill" onchange="S.tl=this.value;rerender()">${tlNames.map(t=>`<option ${t===S.tl?'selected':''}>${t==='All'?'All Team Leads':esc(t)}</option>`).join('')}</select>
+      <button class="pill pill-primary" onclick="exportSummary()"><span>⬇</span><span>Export</span></button>
+    </div>
+  </div>
+  ${renderQuizFilter(view)}
+  ${renderHealth(o)}
+  ${renderAction(o)}
+  ${renderGap(o)}
+  ${renderGroups(o)}
+  ${renderRecognition(o)}
+  <div class="footer-note"><span>ℹ️</span>Built from the master file's raw_data sheet · ${esc(S.view.toUpperCase())} has ${view.months.length} months · this view shows ${o.completed} completed attempts.</div>
+  `;
+}
+
+/* ── QUIZ FILTER (All / #1 / #2) — months live in the sidebar ── */
+function renderQuizFilter(view){
+  const halves = quizzesIn(S.view, S.month);   // e.g. [1,2]
+  const btn = (q,label)=>{
+    const on = (S.quiz===q) ? 'on' : '';
+    const disabled = (q!=='all' && !halves.includes(q)) ? 'disabled' : '';
+    return `<button class="quiz-pill ${on}" ${disabled} ${disabled?'':`onclick="setQuiz('${q}')"`}>${label}</button>`;
+  };
+  return `<div class="quiz-filter ${fade()}">
+    <span class="qlabel">📅 ${esc(S.month)}</span>
+    <span class="qsep"></span>
+    <span class="qlabel">QUIZ</span>
+    ${btn('all','All')}${btn(1,'Quiz #1')}${btn(2,'Quiz #2')}
+  </div>`;
+}
+
+/* ── ROW 1 — HEALTH SUMMARY ── */
+function renderHealth(o){
+  // BPO filter applies to the three numeric cards
+  let pass=o.pass_rate, avg=o.avg_score, comp=o.completion, completed=o.completed, roster=o.roster;
+  if(S.bpo!=='All'){ const b=o.bpo.find(x=>x.bpo===S.bpo); if(b){ pass=b.pass_rate; avg=b.avg; completed=b.completed; roster=b.roster; comp=Math.round(1000*b.completed/Math.max(b.roster,1))/10; } }
+  return `
+  <div class="section-label">Health Summary</div>
+  <div class="stat-grid ${fade()}">
+    <div class="card stat">
+      <div class="stat-top">
+        <div><div class="stat-name">Overall Pass Rate</div><div class="stat-val" style="margin-top:8px">${pass}%</div></div>
+        ${donut(pass)}
+      </div>
+      ${S.bpo==='All'?delta(o.pass_rate,o.prev_pass,'%'):`<span class="stat-foot">${esc(S.bpo)} only</span>`}
+    </div>
+    <div class="card stat">
+      <div class="stat-top">
+        <div class="stat-ic" style="background:#EEF2FF;color:#4F46E5">👥</div>
+      </div>
+      <div><div class="stat-name">Completion Rate</div><div class="stat-val" style="margin-top:4px">${comp}%</div></div>
+      <span class="stat-foot">${completed} / ${roster} agents attempted</span>
+    </div>
+    <div class="card stat">
+      <div class="stat-top"><div class="stat-ic" style="background:#ECFEFF;color:#0891B2">📈</div></div>
+      <div><div class="stat-name">Average Score</div><div class="stat-val" style="margin-top:4px">${avg}%</div></div>
+      ${S.bpo==='All'?delta(o.avg_score,o.prev_avg,'%'):`<span class="stat-foot">${esc(S.bpo)} only</span>`}
+    </div>
+    <div class="card stat">
+      <div class="stat-top"><div class="stat-ic" style="background:#FEF2F2;color:#DC2626">⚠️</div></div>
+      <div><div class="stat-name">High-Risk Agents</div><div class="stat-val" style="margin-top:4px">${o.high_risk}</div></div>
+      <span class="stat-foot">scored below 70% / failed</span>
+    </div>
+    <div class="card stat">
+      <div class="stat-top"><div class="stat-ic" style="background:#FFF7ED;color:#EA580C">🎯</div></div>
+      <div><div class="stat-name">Most Failed SOP Topic</div><div class="stat-val sm" style="margin-top:4px">${esc(o.most_failed_sop)}</div></div>
+      <span class="stat-foot">${o.most_failed_sop_rate?o.most_failed_sop_rate+'% wrong on this topic':'no question-level data'}</span>
+    </div>
+  </div>
+  ${passTrendCard(o)}`;
+}
+function passTrendCard(o){
+  const tr=(o.trend||[]).filter(p=>p.pass_rate!=null);
+  if(tr.length<2) return '';
+  const W=760,H=150,padX=34,padY=20,bw=(W-padX*2)/tr.length;
+  const x=i=>padX+bw*i+bw/2, y=v=>padY+(H-padY*2)*(1-v/100);
+  const pts=tr.map((p,i)=>`${x(i)},${y(p.pass_rate)}`).join(' ');
+  const dots=tr.map((p,i)=>`<circle cx="${x(i)}" cy="${y(p.pass_rate)}" r="4" fill="#EE4D2D"/><text x="${x(i)}" y="${y(p.pass_rate)-10}" text-anchor="middle" font-size="11" font-weight="800" fill="#1A1A1A">${p.pass_rate}%</text>`).join('');
+  const labels=tr.map((p,i)=>`<text x="${x(i)}" y="${H-4}" text-anchor="middle" font-size="10" fill="#8A8F98">${esc(p.label)}</text>`).join('');
+  const grid=[0,50,100].map(v=>`<line x1="${padX}" y1="${y(v)}" x2="${W-padX}" y2="${y(v)}" stroke="#EEF0F3"/><text x="${padX-6}" y="${y(v)+3}" text-anchor="end" font-size="9" fill="#C4C8CE">${v}</text>`).join('');
+  return `<div class="card ${fade()}" style="margin-top:14px">
+    <div class="card-h"><span class="ic">📈</span><h3>Pass Rate Trend</h3><span class="stat-foot" style="margin-left:auto">last ${tr.length} quiz periods</span></div>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" style="display:block">
+      ${grid}
+      <polyline points="${pts}" fill="none" stroke="#EE4D2D" stroke-width="2.5" stroke-linejoin="round"/>
+      ${dots}${labels}
+    </svg>
+  </div>`;
+}
+
+/* ── ROW 2 — ACTION NEEDED ── */
+function renderAction(o){
+  return `
+  <div class="section-label">Action Needed</div>
+  <div class="g3 ${fade()}">
+    <div class="card">
+      <div class="card-h"><span class="ic">🧑‍🏫</span><h3>Agents Needing Coaching</h3><span class="va">${o.coaching.length}</span></div>
+      ${o.coaching.length?`<table><thead><tr><th>Agent</th><th>Latest</th><th>Avg</th><th>Fails</th><th>Risk</th></tr></thead><tbody>
+        ${o.coaching.slice(0,8).map(c=>{const[col,bg]=scoreColor(c.latest);return `<tr>
+          <td><span class="av" style="background:${avColor(c.name)}">${initials(c.name)}</span><span class="nm">${esc(c.name)}</span><div class="bpo-tag" style="margin-left:34px">${esc(c.bpo)}</div></td>
+          <td><span class="scorechip" style="color:${col};background:${bg}">${c.latest}%</span></td>
+          <td>${c.avg}%</td><td>${c.fails}</td><td>${riskTag(c.risk)}</td></tr>`;}).join('')}
+      </tbody></table>`:emptyState('🎉','Everyone passed this period')}
+    </div>
+    <div class="card">
+      <div class="card-h"><span class="ic">🔁</span><h3>Repeat Failures</h3><span class="va">${o.repeat.length}</span></div>
+      ${o.repeat.length?o.repeat.slice(0,8).map(a=>`<div class="lrow">
+        <span class="av" style="background:${avColor(a.name)}">${initials(a.name)}</span>
+        <div class="meta"><div class="nm2">${esc(a.name)}</div><div class="sub">${esc(a.bpo)} · ${a.attempts} recent attempts</div></div>
+        <span class="scorechip" style="color:#DC2626;background:#FEF2F2">${a.fails}× failed</span></div>`).join(''):emptyState('👍','No repeat failures in the last 4 periods')}
+    </div>
+    <div class="card">
+      <div class="card-h"><span class="ic">📉</span><h3>Score Dropped Significantly</h3><span class="va">${o.dropped.length}</span></div>
+      ${o.dropped.length?o.dropped.slice(0,8).map(a=>`<div class="lrow">
+        <span class="av" style="background:${avColor(a.name)}">${initials(a.name)}</span>
+        <div class="meta"><div class="nm2">${esc(a.name)}</div><div class="sub">${esc(a.bpo)} · ${a.prev}% → ${a.now}%</div></div>
+        <span class="scorechip" style="color:#DC2626;background:#FEF2F2">${a.drop}pts</span></div>`).join(''):emptyState('📊','No significant score drops')}
+    </div>
+  </div>`;
+}
+
+/* ── ROW 3 — KNOWLEDGE GAP ── */
+function renderGap(o){
+  if(!o.has_q){
+    return `<div class="section-label">Knowledge Gap</div>
+    <div class="card ${fade()}">${emptyState('🗂️','No question-level data for this view in the master file')}</div>`;
+  }
+  const wrongList = o.questions.filter(q=>q.wrong).slice(0,6);
+  const heatMax = Math.max(...o.heat.map(h=>h.fail),1);
+  return `
+  <div class="section-label">Knowledge Gap</div>
+  <div class="g3 ${fade()}">
+    <div class="card">
+      <div class="card-h"><span class="ic">❓</span><h3>Most Failed Questions</h3></div>
+      <table><thead><tr><th>Scenario</th><th>SOP Topic</th><th>Fail</th></tr></thead><tbody>
+        ${o.questions.slice(0,7).map(q=>{const[col,bg]=scoreColor(100-q.fail);return `<tr>
+          <td><span class="nm">${esc(q.short)}</span></td>
+          <td><span class="bpo-tag">${esc(q.topic)}</span></td>
+          <td><span class="scorechip" style="color:${q.fail>=40?'#DC2626':'#D97706'};background:${q.fail>=40?'#FEF2F2':'#FFFBEB'}">${q.fail}%</span></td></tr>`;}).join('')}
+      </tbody></table>
+    </div>
+    <div class="card">
+      <div class="card-h"><span class="ic">✖️</span><h3>Most Selected Wrong Answers</h3></div>
+      ${wrongList.map(q=>`<div style="padding:10px 0;border-bottom:1px solid #F3F4F6">
+        <div class="bpo-tag" style="margin-bottom:5px">${esc(q.topic)} · ${q.fail}% picked wrong</div>
+        <div class="wrongchip">${esc(q.wrong)}</div></div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="card-h"><span class="ic">🌡️</span><h3>SOP Topic Heatmap</h3></div>
+      ${o.heat.map(h=>{const t=h.fail/heatMax;const col=h.fail>=40?'#DC2626':h.fail>=25?'#EA580C':h.fail>=12?'#D97706':'#10B981';
+        return `<div class="heat-row">
+          <div class="heat-name">${esc(h.topic)}</div>
+          <div class="heat-bar"><div class="heat-fill" style="width:${Math.max(h.fail,8)}%;background:${col}">${h.fail}%</div></div>
+          <div class="heat-n">${h.n} resp.</div></div>`;}).join('')}
+      <div class="note"><span>ℹ️</span>Topic accuracy is derived from scenario-quiz responses in the master file. Cells show the share of agents who answered incorrectly.</div>
+    </div>
+  </div>`;
+}
+
+/* ── ROW 4 — PERFORMANCE BY GROUP ── */
+function renderGroups(o){
+  return `
+  <div class="section-label">Performance by Group</div>
+  <div class="g2 ${fade()}">
+    <div class="card">
+      <div class="card-h"><span class="ic">🏢</span><h3>BPO Comparison</h3></div>
+      <table><thead><tr><th>BPO</th><th>Pass Rate</th><th>Avg Score</th><th>Completed</th><th>Trend</th></tr></thead><tbody>
+        ${o.bpo.map(b=>{const dim=S.bpo!=='All'&&S.bpo!==b.bpo;const[col,bg]=scoreColor(b.pass_rate);return `<tr style="${dim?'opacity:.35':''}">
+          <td><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${bpoColor(b.bpo)};margin-right:8px"></span><span class="nm">${esc(b.bpo)}</span></td>
+          <td><span class="scorechip" style="color:${col};background:${bg}">${b.pass_rate}%</span></td>
+          <td>${b.avg}%</td>
+          <td>${b.completed} / ${b.roster}</td>
+          <td>${sparkline(b.trend)}</td></tr>`;}).join('')}
+      </tbody></table>
+    </div>
+    <div class="card">
+      <div class="card-h"><span class="ic">🧭</span><h3>Team Lead Comparison</h3></div>
+      ${o.tl.length?`<table><thead><tr><th>Team Lead</th><th>Agents</th><th>Pass Rate</th><th>Avg</th><th>High-Risk</th></tr></thead><tbody>
+        ${o.tl.map(t=>{const dim=S.tl!=='All'&&S.tl!==t.tl;const[col,bg]=scoreColor(t.pass_rate);return `<tr style="${dim?'opacity:.35':''}">
+          <td><span class="av" style="background:${avColor(t.tl)}">${initials(t.tl)}</span><span class="nm">${esc(t.tl)}</span></td>
+          <td>${t.agents}</td>
+          <td><span class="scorechip" style="color:${col};background:${bg}">${t.pass_rate}%</span></td>
+          <td>${t.avg}%</td>
+          <td>${t.hr?`<span class="scorechip" style="color:#DC2626;background:#FEF2F2">${t.hr}</span>`:'<span style="color:#9CA3AF">0</span>'}</td></tr>`;}).join('')}
+      </tbody></table>`:emptyState('🧭','No team-lead mapping for this view')}
+    </div>
+  </div>
+  <div class="card ${fade()}" style="margin-top:14px">
+    <div class="card-h"><span class="ic">🧩</span><h3>Agent Type Comparison</h3><span class="stat-foot" style="margin-left:auto">Flow A/B/C · Seasoned / Nesting</span></div>
+    ${o.at&&o.at.length?`<table><thead><tr><th>Agent Type</th><th>Attempts</th><th>Pass Rate</th><th>Avg Score</th><th>Roster</th></tr></thead><tbody>
+      ${o.at.map(t=>{const[col,bg]=scoreColor(t.pass_rate);return `<tr>
+        <td><span class="nm">${esc(t.atype)}</span></td>
+        <td>${t.completed}</td>
+        <td><span class="scorechip" style="color:${col};background:${bg}">${t.pass_rate}%</span></td>
+        <td>${t.avg}%</td>
+        <td>${t.roster}</td></tr>`;}).join('')}
+    </tbody></table>`:emptyState('🧩','No agent-type mapping for this view')}
+  </div>`;
+}
+
+/* ── BONUS — RECOGNITION (Top Performers + Most Improved) ── */
+function renderRecognition(o){
+  if(!o.top.length && !o.improved.length) return '';
+  const medal=['🥇','🥈','🥉'];
+  return `
+  <div class="section-label">Recognition</div>
+  <div class="grec ${fade()}">
+    <div class="card">
+      <div class="card-h"><span class="ic">🏆</span><h3>Top Performers</h3></div>
+      ${o.top.length?o.top.slice(0,6).map((t,i)=>`<div class="lrow">
+        <span style="width:24px;font-size:15px;text-align:center">${medal[i]||'<span style=\"color:#C7CBD1;font-weight:800;font-size:12px\">'+(i+1)+'</span>'}</span>
+        <span class="av" style="background:${avColor(t.name)}">${initials(t.name)}</span>
+        <div class="meta"><div class="nm2">${esc(t.name)}</div><div class="sub">${esc(t.bpo)} · ${t.attempts} attempts</div></div>
+        <span class="scorechip" style="color:#059669;background:#ECFDF5">${t.latest}%</span></div>`).join(''):emptyState('—','No data')}
+    </div>
+    <div class="card">
+      <div class="card-h"><span class="ic">🚀</span><h3>Most Improved</h3></div>
+      ${o.improved.length?o.improved.slice(0,6).map(t=>`<div class="lrow">
+        <span class="av" style="background:${avColor(t.name)}">${initials(t.name)}</span>
+        <div class="meta"><div class="nm2">${esc(t.name)}</div><div class="sub">${esc(t.bpo)} · ${t.prev}% → ${t.cur}%</div></div>
+        <span class="scorechip" style="color:#059669;background:#ECFDF5">▲ ${t.imp}pts</span></div>`).join(''):emptyState('—','No improvement data')}
+    </div>
+  </div>`;
+}
+
+function emptyState(ic,msg){ return `<div class="empty"><span class="e-ic">${ic}</span>${esc(msg)}</div>`; }
+
+/* ── export current view as CSV ── */
+function exportSummary(){
+  const o=O; const rows=[['Metric','Value']];
+  rows.push(['View',S.view.toUpperCase()],['Period',o.period],['Pass Rate',o.pass_rate+'%'],
+    ['Average Score',o.avg_score+'%'],['Completion',o.completion+'%'],['High-Risk Agents',o.high_risk],
+    ['Most Failed SOP',o.most_failed_sop]);
+  rows.push([],['Agents Needing Coaching','Latest','Avg','Fails','Risk','BPO']);
+  o.coaching.forEach(c=>rows.push([c.name,c.latest+'%',c.avg+'%',c.fails,c.risk,c.bpo]));
+  const csv=rows.map(r=>r.map(x=>`"${String(x==null?'':x).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`Quiz_Dashboard_${S.view}_${o.period.replace(/[^a-z0-9]+/gi,'_')}.csv`; a.click();
+}
+
+/* ════════════ ADMIN TAB (WJ-style) ════════════ */
+function visitLog(){ try{ const r=localStorage.getItem('qd_visits'); return r?JSON.parse(r):[]; }catch(e){ return []; } }
+function usage(){ let u={visits:0,sessions:0,first:null,last:null}; try{ const raw=localStorage.getItem('qd_usage'); if(raw) u=JSON.parse(raw);}catch(e){} return u; }
+function bumpUsage(){
+  try{
+    const u=usage(); const now=new Date(); const iso=now.toISOString();
+    u.visits=(u.visits||0)+1; if(!u.first) u.first=iso;
+    if(!u.last || (Date.now()-new Date(u.last).getTime())>30*60*1000) u.sessions=(u.sessions||0)+1;
+    u.last=iso; localStorage.setItem('qd_usage', JSON.stringify(u));
+    const v=visitLog(); v.push({ts:iso, day:iso.slice(0,10), hour:now.getHours(), dow:now.getDay()});
+    localStorage.setItem('qd_visits', JSON.stringify(v.slice(-2000)));
+  }catch(e){}
+}
+const admScoreCol = p=>p>=80?'#059669':p>=50?'#D97706':'#DC2626';
+const admScoreBg  = p=>p>=80?'#ECFDF5':p>=50?'#FFFBEB':'#FEF2F2';
+const admBpoCol   = b=>b==='Vads'?'#EE4D2D':b==='ePerformax'?'#2563EB':b==='Asia Recruit'?'#059669':'#6B7280';
+const admBpoBg    = b=>b==='Vads'?'#FFF5F2':b==='ePerformax'?'#EFF6FF':b==='Asia Recruit'?'#ECFDF5':'#F3F4F6';
+
+function renderAdmin(){ return rAdmin(); }
+function saveApiUrl(){ const v=(document.getElementById('qd-api-input')||{}).value||''; const k=(document.getElementById('qd-key-input')||{}).value||''; try{ localStorage.setItem('qd_api_url', v.trim()); if(k.trim()) localStorage.setItem('qd_api_key', k.trim()); else localStorage.removeItem('qd_api_key'); }catch(e){} refreshFromBackend().then(()=>{ if(S.page==='admin'){S.adminSub='backend';render();} }); }
+function clearApiUrl(){ try{ localStorage.removeItem('qd_api_url'); localStorage.removeItem('qd_api_key'); }catch(e){} QUIZ_Q=QUESTIONS.slice(); RAW=RAW_ROWS; DATA=qdAggregate(RAW); BACKEND={status:'local',when:null,err:null}; boot(); }
+function rAdmBackend(){
+  const url=apiUrl();
+  const st=BACKEND.status;
+  const badge = st==='live'?['#ECFDF5','#059669','🟢 Live']
+    : st==='connecting'?['#EFF6FF','#2563EB','🔵 Connecting…']
+    : st==='error'?['#FEF2F2','#DC2626','🔴 Error']
+    : ['#F3F4F6','#6B7280','⚪ Local (baked data)'];
+  const rowsN=RAW.length, qN=QUIZ_Q.length;
+  const when=BACKEND.when?new Date(BACKEND.when).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+  return `<div>
+  <div class="card" style="padding:20px;margin-bottom:16px;border-radius:16px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <h3 style="font-size:15px;font-weight:800;margin:0">🔌 Live Backend</h3>
+      <span style="font-size:12px;font-weight:800;padding:3px 12px;border-radius:20px;background:${badge[0]};color:${badge[1]}">${badge[2]}</span>
+    </div>
+    <p style="font-size:13px;color:#6B7280;margin-bottom:14px">Connect this dashboard to your data source (Apps Script, Firebase, or Supabase). When set, it loads <b>live</b> agent rows and quiz questions on every open, so Knowledge Gap and all metrics update automatically for everyone.</p>
+    <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:6px">Backend URL <span style="font-weight:500;color:#9CA3AF">— Apps Script /exec · Firebase RTDB /.json · Supabase function</span></label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input id="qd-api-input" class="inp" style="flex:1;min-width:280px;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;font-family:inherit" placeholder="https://…  (exec / .json / functions URL)" value="${esc(url)}">
+      <input id="qd-key-input" class="inp" style="flex:1;min-width:200px;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;font-family:inherit" placeholder="API key — Supabase only (else blank)" value="${esc(apiKey())}">
+      <button class="pill pill-primary" onclick="saveApiUrl()" style="padding:10px 18px">Save &amp; Connect</button>
+      <button class="pill" onclick="refreshFromBackend()" style="padding:10px 16px">↻ Refresh</button>
+      <button class="pill" onclick="clearApiUrl()" style="padding:10px 16px">Clear</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px">
+      <div class="card" style="padding:14px;text-align:center;border-radius:12px"><div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase">Agent Rows</div><div style="font-size:24px;font-weight:900;color:#2563EB">${rowsN}</div></div>
+      <div class="card" style="padding:14px;text-align:center;border-radius:12px"><div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase">Question Rows</div><div style="font-size:24px;font-weight:900;color:#EE4D2D">${qN}</div></div>
+      <div class="card" style="padding:14px;text-align:center;border-radius:12px"><div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase">Last Synced</div><div style="font-size:14px;font-weight:800;color:#059669;margin-top:5px">${when}</div></div>
+    </div>
+    ${BACKEND.err?`<div class="note" style="background:#FEF2F2;border:1px solid rgba(220,38,38,.2);margin-top:12px"><span>⚠️</span><span style="color:#991B1B">${esc(BACKEND.err)} — check the URL is the <b>/exec</b> link and the web app is deployed for "Anyone".</span></div>`:''}
+  </div>
+  <div class="card" style="padding:20px;border-radius:16px">
+    <h3 style="font-size:15px;font-weight:800;margin-bottom:12px">🛠️ Setup (one time)</h3>
+    <ol style="font-size:13px;line-height:1.9;color:#374151;padding-left:20px;margin:0">
+      <li>In the master Google Sheet: <b>Extensions → Apps Script</b>, paste the provided <code>Code.gs</code>, Save.</li>
+      <li><b>Deploy → New deployment → Web app</b>; Execute as <b>Me</b>, Access <b>Anyone</b>; Deploy and copy the <code>/exec</code> URL.</li>
+      <li>Paste that URL above and hit <b>Save &amp; Connect</b>. The badge turns 🟢 Live.</li>
+      <li>Each cycle, append the LMS export to <code>raw_data</code> and <code>quiz_questions</code> — every dashboard refreshes automatically.</li>
+    </ol>
+    <div class="note" style="margin-top:12px"><span>🔒</span>The web app only needs read access. The URL is stored locally in your browser; share it with your team so everyone points at the same source.</div>
+  </div></div>`;
+}
+function rAdmin(){
+  const sub=S.adminSub||'changelog';
+  const tabs=[{k:'changelog',l:'📋 Version Updates'},{k:'userstats',l:'👥 User Stats'},{k:'traffic',l:'📈 Traffic'},{k:'backend',l:'🔌 Backend'}];
+  let ct = sub==='userstats'?rAdmUserStats() : sub==='traffic'?rAdmTraffic() : sub==='backend'?rAdmBackend() : rAdmChangelog();
+  return `
+  <div class="${fade()}" style="margin-bottom:6px">
+    <h1 style="font-size:24px;font-weight:900;margin-bottom:2px">⚙️ Admin — ${esc(S.view.toUpperCase())}</h1>
+    <p style="font-size:13px;color:#6B7280;margin-bottom:18px">Statistics and version history for the Quiz Dashboard.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">
+      ${tabs.map(t=>`<button onclick="S.adminSub='${t.k}';rerender()" style="padding:10px 20px;border-radius:10px;border:1.5px solid ${sub===t.k?'#EE4D2D':'#E5E7EB'};background:${sub===t.k?'#FFF5F2':'#fff'};color:${sub===t.k?'#EE4D2D':'#6B7280'};font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">${t.l}</button>`).join('')}
+    </div>
+    ${ct}
+  </div>`;
+}
+
+/* ── Version Updates ── */
+function rAdmChangelog(){
+  const catColor=cat=>{
+    if(cat.startsWith('🐛')||cat.startsWith('🗑️')) return ['#FEF2F2','#DC2626'];
+    if(cat.startsWith('🔄')||cat.startsWith('⬆️')) return ['#EFF6FF','#2563EB'];
+    if(cat.startsWith('🏆')||cat.startsWith('✅')) return ['#ECFDF5','#059669'];
+    if(cat.startsWith('👤')||cat.startsWith('👥')||cat.startsWith('⚙️')) return ['#FFF7ED','#D97706'];
+    if(cat.startsWith('📊')||cat.startsWith('📋')) return ['#F5F3FF','#7C3AED'];
+    return ['#F3F4F6','#374151'];
+  };
+  return `<div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <div><h2 style="font-size:19px;font-weight:900;margin-bottom:3px">📋 Version Updates</h2>
+        <p style="font-size:13px;color:#6B7280">Full history of Quiz Dashboard changes.</p></div>
+      <div style="text-align:right"><div style="font-size:11px;color:#6B7280;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Current</div>
+        <div style="font-size:22px;font-weight:900;color:#EE4D2D">${esc((VERSIONS[0]||{}).label||VER)}</div></div>
+    </div>
+    ${VERSIONS.map(V=>`
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px;border-radius:16px;border:1px solid #E9EBEF;${V.current?'border:2px solid #EE4D2D':''}">
+      <div style="padding:15px 20px;background:${V.current?'linear-gradient(135deg,#EE4D2D,#FF6B47)':'#F9FAFB'};display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:20px;font-weight:900;color:${V.current?'#fff':'#1A1A1A'}">${esc(V.label||V.ver)}</div>
+          ${V.current?'<span style="background:rgba(255,255,255,.25);color:#fff;font-size:10px;font-weight:800;padding:2px 10px;border-radius:20px">CURRENT</span>':''}
+        </div>
+        <div style="font-size:12px;font-weight:600;color:${V.current?'rgba(255,255,255,.85)':'#6B7280'}">${esc(V.date)}</div>
+      </div>
+      <div style="padding:14px 20px;background:#fff">
+        ${(V.updates||[]).map(u=>{const [bg,col]=catColor(u.cat);return `<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:9px">
+          <span style="font-size:11px;font-weight:800;padding:2px 9px;border-radius:6px;background:${bg};color:${col};white-space:nowrap;flex-shrink:0;margin-top:1px">${esc(u.cat)}</span>
+          <span style="font-size:13px;line-height:1.55;color:#374151">${esc(u.text)}</span>
+        </div>`;}).join('')}
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+/* ── User Stats (from RAW_ROWS) ── */
+function rAdmUserStats(){
+  const norm=v=>{ const t=String(v||'').toLowerCase(); return t.includes('l2rr')?'L2RR':/\bp1\b/.test(t)?'P1':'DMS'; };
+  const byUser={}, byBPO={};
+  RAW_ROWS.forEach(r=>{
+    let sc=parseFloat(r.score); if(sc<=1) sc*=100;
+    const e=String(r.email||'').toLowerCase(); if(!e) return;
+    const po=qdQuizPorder(r.month, r.quiz||1);
+    if(!byUser[e]) byUser[e]={name:r.name||e.split('@')[0],bpo:r.bpo||'—',attempts:0,total:0,best:0,worst:100,views:new Set(),lastPo:0,lastMonth:''};
+    const u=byUser[e]; u.attempts++; u.total+=sc; u.best=Math.max(u.best,sc); u.worst=Math.min(u.worst,sc); u.views.add(norm(r.view));
+    if(po>=u.lastPo){ u.lastPo=po; u.lastMonth=`${qdMonthLabel(r.month)} #${r.quiz||1}`; u.name=r.name||u.name; u.bpo=r.bpo||u.bpo; }
+    const b=r.bpo||'—'; if(!byBPO[b]) byBPO[b]={bpo:b,attempts:0,total:0,users:new Set()};
+    byBPO[b].attempts++; byBPO[b].total+=sc; byBPO[b].users.add(e);
+  });
+  const users=Object.values(byUser).map(u=>({...u,avg:Math.round(u.total/u.attempts),views:[...u.views]})).sort((a,b)=>b.avg-a.avg);
+  const bpos=Object.values(byBPO).map(b=>({...b,avg:Math.round(b.total/b.attempts),userCount:b.users.size})).sort((a,b)=>b.avg-a.avg);
+  const totalAttempts=users.reduce((s,u)=>s+u.attempts,0);
+  const overallAvg=totalAttempts?Math.round(users.reduce((s,u)=>s+u.total,0)/totalAttempts):0;
+  const passRate=totalAttempts?Math.round(100*RAW_ROWS.filter(r=>{let s=parseFloat(r.score);if(s<=1)s*=100;return s>=80;}).length/RAW_ROWS.length):0;
+  return `<div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+    <div class="card" style="padding:16px;text-align:center;border-radius:14px"><div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;margin-bottom:4px">Total Users</div><div style="font-size:28px;font-weight:900;color:#2563EB">${users.length}</div></div>
+    <div class="card" style="padding:16px;text-align:center;border-radius:14px"><div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;margin-bottom:4px">Total Attempts</div><div style="font-size:28px;font-weight:900;color:#EE4D2D">${totalAttempts}</div></div>
+    <div class="card" style="padding:16px;text-align:center;border-radius:14px"><div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;margin-bottom:4px">Overall Avg</div><div style="font-size:28px;font-weight:900;color:${admScoreCol(overallAvg)}">${overallAvg}%</div></div>
+    <div class="card" style="padding:16px;text-align:center;border-radius:14px"><div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;margin-bottom:4px">Pass Rate</div><div style="font-size:28px;font-weight:900;color:#059669">${passRate}%</div></div>
+  </div>
+  <div class="card" style="padding:20px;margin-bottom:20px;border-radius:16px">
+    <h3 style="font-size:15px;font-weight:800;margin-bottom:14px">🏢 BPO Comparison</h3>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      ${bpos.map(b=>`<div style="flex:1;min-width:150px;padding:16px;border-radius:12px;background:${admBpoBg(b.bpo)};border:2px solid ${admBpoCol(b.bpo)}">
+        <div style="font-size:13px;font-weight:900;color:${admBpoCol(b.bpo)};margin-bottom:8px">${esc(b.bpo)}</div>
+        <div style="font-size:26px;font-weight:900;color:${admScoreCol(b.avg)};margin-bottom:4px">${b.avg}%</div>
+        <div style="font-size:11px;color:#6B7280">${b.userCount} user${b.userCount!==1?'s':''} · ${b.attempts} attempt${b.attempts!==1?'s':''}</div>
+      </div>`).join('')}
+    </div>
+  </div>
+  <div class="card" style="padding:20px;border-radius:16px">
+    <h3 style="font-size:15px;font-weight:800;margin-bottom:14px">👤 Per-User Breakdown</h3>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr style="border-bottom:2px solid #E5E7EB">
+        ${['User','BPO','Attempts','Avg','Best','Worst','Views Taken','Last Active'].map((h,i)=>`<th style="text-align:${i>=2&&i<=5?'center':'left'};padding:8px 12px;font-size:11px;font-weight:800;color:#6B7280;text-transform:uppercase">${h}</th>`).join('')}
+      </tr></thead>
+      <tbody>${users.map((u,i)=>`<tr style="border-bottom:1px solid #F3F4F6;background:${i%2?'#FAFAFA':'#fff'}">
+        <td style="padding:10px 12px;font-weight:700">${esc(u.name)}</td>
+        <td style="padding:10px 12px"><span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:6px;background:${admBpoBg(u.bpo)};color:${admBpoCol(u.bpo)}">${esc(u.bpo)}</span></td>
+        <td style="padding:10px 12px;text-align:center;font-weight:700">${u.attempts}</td>
+        <td style="padding:10px 12px;text-align:center"><span style="font-weight:900;color:${admScoreCol(u.avg)};background:${admScoreBg(u.avg)};padding:2px 8px;border-radius:6px">${u.avg}%</span></td>
+        <td style="padding:10px 12px;text-align:center;font-weight:700;color:#059669">${Math.round(u.best)}%</td>
+        <td style="padding:10px 12px;text-align:center;font-weight:700;color:#DC2626">${Math.round(u.worst)}%</td>
+        <td style="padding:10px 12px">${u.views.map(v=>`<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:#F3F4F6;color:#374151;margin-right:3px">${v}</span>`).join('')}</td>
+        <td style="padding:10px 12px;font-size:12px;color:#6B7280">${esc(u.lastMonth)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+  </div></div>`;
+}
+
+/* ── Traffic (local visit log) ── */
+function rAdmTraffic(){
+  const visits=visitLog();
+  const todayStr=new Date().toISOString().slice(0,10), msDay=86400000;
+  const dayLabels=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const days14=[]; for(let i=13;i>=0;i--) days14.push(new Date(Date.now()-i*msDay).toISOString().slice(0,10));
+  const byDay={}; visits.forEach(v=>{ byDay[v.day]=(byDay[v.day]||0)+1; });
+  const byHour=Array(24).fill(0); visits.forEach(v=>{ if(v.hour!=null) byHour[v.hour]++; });
+  const byDow=Array(7).fill(0); visits.forEach(v=>{ if(v.dow!=null) byDow[v.dow]++; });
+  const total=visits.length, today=byDay[todayStr]||0;
+  const week7=days14.slice(7).reduce((s,d)=>s+(byDay[d]||0),0);
+  const maxDay=days14.reduce((m,d)=>Math.max(m,byDay[d]||0),0);
+  const peakDay=days14.find(d=>(byDay[d]||0)===maxDay);
+  const peakLabel=(peakDay&&maxDay)?new Date(peakDay+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—';
+  const barChart=()=>{ if(!total) return `<div style="text-align:center;padding:36px;color:#9CA3AF;font-size:13px">No visit data yet — visits are logged automatically each session.</div>`;
+    return `<div style="display:flex;align-items:flex-end;gap:6px;padding:8px 0 0;height:130px">`+days14.map(d=>{
+      const cnt=byDay[d]||0, pct=maxDay>0?Math.round(cnt/maxDay*100):0, isT=d===todayStr;
+      const col=isT?'#EE4D2D':'#2563EB', bg=isT?'#FFF5F2':'#EFF6FF';
+      const lbl=new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:800;color:${cnt?col:'#D1D5DB'}">${cnt||''}</div>
+        <div style="width:100%;display:flex;align-items:flex-end;height:80px"><div style="width:100%;height:${Math.max(pct,cnt?4:0)}%;background:${cnt?col:bg};border-radius:4px 4px 0 0;min-height:${cnt?4:0}px"></div></div>
+        <div style="font-size:9.5px;color:${isT?'#EE4D2D':'#6B7280'};font-weight:${isT?800:600};text-align:center;line-height:1.2;white-space:nowrap">${lbl}${isT?'<br>TODAY':''}</div>
+      </div>`;}).join('')+`</div>`; };
+  const hourChart=()=>{ const mx=Math.max(...byHour,1);
+    return `<div style="display:flex;gap:3px;align-items:flex-start">`+byHour.map((cnt,h)=>{
+      const pct=Math.round(cnt/mx*100); const bg=cnt===0?'#F3F4F6':pct>75?'#1D4ED8':pct>50?'#2563EB':pct>25?'#93C5FD':'#DBEAFE';
+      const tc=cnt===0?'#D1D5DB':pct>50?'#fff':'#1E40AF'; const lbl=(h%3===0)?String(h).padStart(2,'0'):'';
+      return `<div title="${h}:00 — ${cnt} visits" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px">
+        <div style="width:100%;height:28px;border-radius:4px;background:${bg};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:${tc}">${cnt||''}</div>
+        <div style="font-size:8px;color:#9CA3AF;min-height:10px">${lbl}</div></div>`;}).join('')+`</div>`; };
+  const dowChart=()=>{ const mx=Math.max(...byDow,1);
+    return `<div style="display:flex;gap:8px;align-items:flex-end;height:80px">`+byDow.map((cnt,i)=>{
+      const pct=Math.round(cnt/mx*100);
+      return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1">
+        <div style="font-size:11px;font-weight:800;color:${cnt?'#059669':'#D1D5DB'}">${cnt||''}</div>
+        <div style="width:100%;height:48px;display:flex;align-items:flex-end"><div style="width:100%;height:${Math.max(pct,cnt?6:0)}%;background:${cnt?'#059669':'#F3F4F6'};border-radius:4px 4px 0 0;min-height:${cnt?4:0}px"></div></div>
+        <div style="font-size:11px;color:#6B7280;font-weight:700">${dayLabels[i]}</div></div>`;}).join('')+`</div>`; };
+  return `<div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+    <div class="card" style="padding:16px;text-align:center;border-radius:14px"><div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;margin-bottom:4px">Total Visits</div><div style="font-size:28px;font-weight:900;color:#2563EB">${total}</div></div>
+    <div class="card" style="padding:16px;text-align:center;border-radius:14px"><div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;margin-bottom:4px">Today</div><div style="font-size:28px;font-weight:900;color:#EE4D2D">${today}</div></div>
+    <div class="card" style="padding:16px;text-align:center;border-radius:14px"><div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;margin-bottom:4px">Last 7 Days</div><div style="font-size:28px;font-weight:900;color:#059669">${week7}</div></div>
+    <div class="card" style="padding:16px;text-align:center;border-radius:14px"><div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;margin-bottom:4px">Peak Day</div><div style="font-size:20px;font-weight:900;color:#D97706">${peakLabel}</div><div style="font-size:11px;font-weight:700;color:#D97706">${maxDay} visit${maxDay!==1?'s':''}</div></div>
+  </div>
+  <div class="card" style="padding:20px;margin-bottom:16px;border-radius:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 style="font-size:15px;font-weight:800;margin:0">📅 Last 14 Days</h3><span style="font-size:11px;color:#6B7280;font-weight:600">🔴 = today</span></div>
+    ${barChart()}
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+    <div class="card" style="padding:20px;border-radius:16px"><h3 style="font-size:15px;font-weight:800;margin-bottom:14px">🕐 Visits by Hour</h3>${hourChart()}<div style="margin-top:8px;font-size:11px;color:#6B7280">Darker blue = more visits. Hover for detail.</div></div>
+    <div class="card" style="padding:20px;border-radius:16px"><h3 style="font-size:15px;font-weight:800;margin-bottom:14px">📆 Visits by Day of Week</h3>${dowChart()}</div>
+  </div>
+  <div class="note ${fade()}"><span>ℹ️</span>Traffic is logged locally for <b>this device/browser</b>. For team-wide visits and per-user traffic across everyone, host the dashboard with a backend that logs each session centrally.</div>
+  </div>`;
+}
+
+/* ════════════ BOOT ════════════ */
+bumpUsage();
+renderSidebar(); render();
+refreshFromBackend();   // no-op unless an Apps Script URL is set (Admin → Backend)</script>
+</body>
+</html>
