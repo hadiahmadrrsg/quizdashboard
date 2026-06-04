@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quiz Dashboard v8 — Agent Quiz Performance</title>
+<title>Quiz Dashboard v9 — Agent Quiz Performance</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -111,7 +111,7 @@ tr:last-child td{border-bottom:none}
 .quiz-pill.on{background:#FFF1ED;border-color:#EE4D2D;color:#EE4D2D}
 .quiz-pill[disabled]{opacity:.4;cursor:not-allowed}
 /* ── sidebar month sub-nav (below Home) ── */
-.month-nav{display:flex;flex-direction:column;gap:2px;margin:2px 0 6px 0;padding:6px 0 6px 14px;border-left:2px solid #F0E3DF;margin-left:16px;max-height:340px;overflow-y:auto}
+.month-nav{display:flex;flex-direction:column;gap:2px;margin:2px 0 6px 0;padding:6px 0 6px 14px;border-left:2px solid #F0E3DF;margin-left:16px}
 .month-link{text-align:left;border:none;background:transparent;font-family:inherit;font-size:12px;font-weight:700;color:#8A8F98;padding:7px 12px;border-radius:9px;cursor:pointer;transition:all .14s;white-space:nowrap}
 .month-link:hover{background:#F6F7F9;color:#EE4D2D}
 .month-link.on{background:#FFF1ED;color:#EE4D2D}
@@ -370,9 +370,13 @@ function onFirebaseLoaded(){
     }, err=>{ BACKEND={status:'error',when:null,err:String(err&&err.message||err)}; boot(); });
   }catch(e){ BACKEND={status:'error',when:null,err:String(e&&e.message||e)}; boot(); }
 }
-const VER = 'v8';
+const VER = 'v9';
 const VERSIONS = [
-  { ver:'v8', label:'Version 8', date:'4 Jun 2026', current:true, updates:[
+  { ver:'v9', label:'Version 9', date:'4 Jun 2026', current:true, updates:[
+    {cat:'🎯 Knowledge Gap', text:'Each failed question now lists the agents who answered it incorrectly (from the LMS_Details join).'},
+    {cat:'🖱️ UI', text:'Sidebar month list expands fully instead of scrolling inside a fixed box.'}
+  ]},
+  { ver:'v8', label:'Version 8', date:'4 Jun 2026', updates:[
     {cat:'🧹 Admin', text:'Removed the Backend tab — the dashboard connects to Firebase automatically, so there is nothing to configure in-app.'}
   ]},
   { ver:'v7', label:'Version 7', date:'4 Jun 2026', updates:[
@@ -519,7 +523,8 @@ function buildKG(){
     const ans=+q.answered||0, cor=+q.correct_count||0, fail=ans?Math.round(100*(ans-cor)/ans):0;
     const txt=String(q.question||('Q'+(q.q_no||''))).replace(/\s+/g,' ').trim();
     return { short: txt.length>78?txt.slice(0,78)+'…':txt, topic:String(q.topic||'Untagged').trim()||'Untagged',
-             fail, n:ans, wrong:String(q.most_wrong||'').trim() };
+             fail, n:ans, wrong:String(q.most_wrong||'').trim(),
+             q_no:String(q.q_no||'').trim(), agents:Array.isArray(q.wrong_agents)?q.wrong_agents.filter(Boolean):[] };
   }).sort((a,b)=>b.fail-a.fail);
   const tg={}; questions.forEach(q=>{ (tg[q.topic]=tg[q.topic]||[0,0]); tg[q.topic][0]+=q.fail*q.n; tg[q.topic][1]+=q.n; });
   const heat=Object.keys(tg).map(t=>{ const [fw,n]=tg[t]; return {topic:t,fail:n?Math.round(fw/n):0,n}; }).sort((a,b)=>b.fail-a.fail);
@@ -700,7 +705,7 @@ function renderGap(o){
       <div class="card-h"><span class="ic">❓</span><h3>Most Failed Questions</h3></div>
       <table><thead><tr><th>Scenario</th><th>SOP Topic</th><th>Fail</th></tr></thead><tbody>
         ${o.questions.slice(0,7).map(q=>{const[col,bg]=scoreColor(100-q.fail);return `<tr>
-          <td><span class="nm">${esc(q.short)}</span></td>
+          <td><span class="nm">${esc(q.short)}</span>${q.agents.length?`<div style="margin-top:4px;font-size:11px;color:#B91C1C">✖ ${esc(q.agents.join(', '))}</div>`:''}</td>
           <td><span class="bpo-tag">${esc(q.topic)}</span></td>
           <td><span class="scorechip" style="color:${q.fail>=40?'#DC2626':'#D97706'};background:${q.fail>=40?'#FEF2F2':'#FFFBEB'}">${q.fail}%</span></td></tr>`;}).join('')}
       </tbody></table>
