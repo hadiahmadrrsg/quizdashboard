@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quiz Dashboard v6 — Agent Quiz Performance</title>
+<title>Quiz Dashboard v8 — Agent Quiz Performance</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -323,14 +323,63 @@ function qdAggregate(rawRows){
 }
 
 let RAW = RAW_ROWS;
-const QUESTIONS = [];          // offline fallback; live question rows arrive from the backend
+const QUESTIONS = [];          // offline fallback; live question rows arrive from Firebase
 let QUIZ_Q = QUESTIONS.slice();
-let API_URL = "";              // optional default; can also be set in Admin → Backend
+let API_URL = "";
 let BACKEND = { status:'local', when:null, err:null };
 let DATA = qdAggregate(RAW);
-const VER = 'v6';
+
+/* ═══ FIREBASE CONFIG — REPLACE WITH YOUR OWN ═══
+   1. console.firebase.google.com → create project → Add a Web app → copy firebaseConfig
+   2. Build → Realtime Database → Create database (region: Singapore) → start in test mode
+   3. Paste your values below. The dashboard then auto-connects on load — no URL to enter.
+   ════════════════════════════════════════════════ */
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBKpZ1E_4clxXLzpuAFXl0ZdDp2dPIdcIw",
+  authDomain:        "quiz-dashboard-63b6d.firebaseapp.com",
+  databaseURL:       "https://quiz-dashboard-63b6d-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "quiz-dashboard-63b6d",
+  storageBucket:     "quiz-dashboard-63b6d.firebasestorage.app",
+  messagingSenderId: "783010812146",
+  appId:             "1:783010812146:web:94a953beff31f6fc1b406b"
+};
+var _fbDB = null;
+function fbConfigured(){ return FIREBASE_CONFIG.databaseURL && !FIREBASE_CONFIG.databaseURL.includes('PASTE_YOUR'); }
+function initFirebase(){
+  if(!fbConfigured()){ BACKEND={status:'local',when:null,err:null}; boot(); return; }
+  BACKEND={status:'connecting',when:null,err:null};
+  const sdks=['https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
+              'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js'];
+  let n=0;
+  sdks.forEach(src=>{ const s=document.createElement('script'); s.src=src;
+    s.onload=()=>{ if(++n===sdks.length) onFirebaseLoaded(); };
+    s.onerror=()=>{ BACKEND={status:'error',when:null,err:'Could not load Firebase SDK (offline?)'}; boot(); };
+    document.head.appendChild(s); });
+}
+function onFirebaseLoaded(){
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    _fbDB = firebase.database();
+    // Read once, then subscribe for live updates. Apps Script writes to /quizdashboard.
+    _fbDB.ref('quizdashboard').on('value', snap=>{
+      const v = snap.val() || {};
+      if(Array.isArray(v.rows)){ RAW=v.rows; DATA=qdAggregate(RAW); }
+      if(Array.isArray(v.questions)){ QUIZ_Q=v.questions; }
+      BACKEND={status:'live',when:v.generated||new Date().toISOString(),err:null};
+      boot();
+    }, err=>{ BACKEND={status:'error',when:null,err:String(err&&err.message||err)}; boot(); });
+  }catch(e){ BACKEND={status:'error',when:null,err:String(e&&e.message||e)}; boot(); }
+}
+const VER = 'v8';
 const VERSIONS = [
-  { ver:'v6', label:'Version 6', date:'4 Jun 2026', current:true, updates:[
+  { ver:'v8', label:'Version 8', date:'4 Jun 2026', current:true, updates:[
+    {cat:'🧹 Admin', text:'Removed the Backend tab — the dashboard connects to Firebase automatically, so there is nothing to configure in-app.'}
+  ]},
+  { ver:'v7', label:'Version 7', date:'4 Jun 2026', updates:[
+    {cat:'🔥 Firebase', text:'Auto-connects to Firebase on load (same as WJ Dashboard) — paste FIREBASE_CONFIG once at the top of the file; no URL to enter. Reads live rows + questions and updates in real time.'},
+    {cat:'🔄 Sync', text:'Pairs with an Apps Script that pushes the raw_data + quiz_questions tabs into Firebase on a timer.'}
+  ]},
+  { ver:'v6', label:'Version 6', date:'4 Jun 2026', updates:[
     {cat:'🗑️ Data', text:'Removed all baked-in data — the dashboard now loads only from the connected source (Apps Script, Firebase, or Supabase).'},
     {cat:'🔌 Feature', text:'Backend tab now supports all three sources and an optional API key (used by Supabase); shows a connect prompt until a source is set.'},
     {cat:'🔄 Data', text:'Agent type is now read from the backend rows instead of a built-in lookup.'}
@@ -499,7 +548,7 @@ function render(){
   const main = $('#main');
   if(S.page==='admin'){ main.innerHTML = renderAdmin(); return; }
   const view = DATA[S.view];
-  if(!view){ main.innerHTML = `<div class="empty" style="margin-top:80px"><span class="e-ic">🔌</span>No data yet — open <b>Admin → 🔌 Backend</b> and connect your source to load quizzes.</div>`; return; }
+  if(!view){ const msg = fbConfigured() ? 'Waiting for data — run the Apps Script sync once to push your <b>raw_data</b> + <b>quiz_questions</b> tabs into Firebase.' : 'Firebase not configured yet — paste your <b>FIREBASE_CONFIG</b> at the top of the file, then the dashboard auto-syncs from your sheet.'; main.innerHTML = `<div class="empty" style="margin-top:80px"><span class="e-ic">🔌</span>${msg}</div>`; return; }
   ensureSel();
   const o = Object.assign({}, curMetrics(view), view.kg, buildKG()||{}, { n_periods: view.n_periods });
   O = o;
@@ -775,54 +824,10 @@ const admBpoCol   = b=>b==='Vads'?'#EE4D2D':b==='ePerformax'?'#2563EB':b==='Asia
 const admBpoBg    = b=>b==='Vads'?'#FFF5F2':b==='ePerformax'?'#EFF6FF':b==='Asia Recruit'?'#ECFDF5':'#F3F4F6';
 
 function renderAdmin(){ return rAdmin(); }
-function saveApiUrl(){ const v=(document.getElementById('qd-api-input')||{}).value||''; const k=(document.getElementById('qd-key-input')||{}).value||''; try{ localStorage.setItem('qd_api_url', v.trim()); if(k.trim()) localStorage.setItem('qd_api_key', k.trim()); else localStorage.removeItem('qd_api_key'); }catch(e){} refreshFromBackend().then(()=>{ if(S.page==='admin'){S.adminSub='backend';render();} }); }
-function clearApiUrl(){ try{ localStorage.removeItem('qd_api_url'); localStorage.removeItem('qd_api_key'); }catch(e){} QUIZ_Q=QUESTIONS.slice(); RAW=RAW_ROWS; DATA=qdAggregate(RAW); BACKEND={status:'local',when:null,err:null}; boot(); }
-function rAdmBackend(){
-  const url=apiUrl();
-  const st=BACKEND.status;
-  const badge = st==='live'?['#ECFDF5','#059669','🟢 Live']
-    : st==='connecting'?['#EFF6FF','#2563EB','🔵 Connecting…']
-    : st==='error'?['#FEF2F2','#DC2626','🔴 Error']
-    : ['#F3F4F6','#6B7280','⚪ Local (baked data)'];
-  const rowsN=RAW.length, qN=QUIZ_Q.length;
-  const when=BACKEND.when?new Date(BACKEND.when).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
-  return `<div>
-  <div class="card" style="padding:20px;margin-bottom:16px;border-radius:16px">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-      <h3 style="font-size:15px;font-weight:800;margin:0">🔌 Live Backend</h3>
-      <span style="font-size:12px;font-weight:800;padding:3px 12px;border-radius:20px;background:${badge[0]};color:${badge[1]}">${badge[2]}</span>
-    </div>
-    <p style="font-size:13px;color:#6B7280;margin-bottom:14px">Connect this dashboard to your data source (Apps Script, Firebase, or Supabase). When set, it loads <b>live</b> agent rows and quiz questions on every open, so Knowledge Gap and all metrics update automatically for everyone.</p>
-    <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:6px">Backend URL <span style="font-weight:500;color:#9CA3AF">— Apps Script /exec · Firebase RTDB /.json · Supabase function</span></label>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <input id="qd-api-input" class="inp" style="flex:1;min-width:280px;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;font-family:inherit" placeholder="https://…  (exec / .json / functions URL)" value="${esc(url)}">
-      <input id="qd-key-input" class="inp" style="flex:1;min-width:200px;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;font-family:inherit" placeholder="API key — Supabase only (else blank)" value="${esc(apiKey())}">
-      <button class="pill pill-primary" onclick="saveApiUrl()" style="padding:10px 18px">Save &amp; Connect</button>
-      <button class="pill" onclick="refreshFromBackend()" style="padding:10px 16px">↻ Refresh</button>
-      <button class="pill" onclick="clearApiUrl()" style="padding:10px 16px">Clear</button>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px">
-      <div class="card" style="padding:14px;text-align:center;border-radius:12px"><div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase">Agent Rows</div><div style="font-size:24px;font-weight:900;color:#2563EB">${rowsN}</div></div>
-      <div class="card" style="padding:14px;text-align:center;border-radius:12px"><div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase">Question Rows</div><div style="font-size:24px;font-weight:900;color:#EE4D2D">${qN}</div></div>
-      <div class="card" style="padding:14px;text-align:center;border-radius:12px"><div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase">Last Synced</div><div style="font-size:14px;font-weight:800;color:#059669;margin-top:5px">${when}</div></div>
-    </div>
-    ${BACKEND.err?`<div class="note" style="background:#FEF2F2;border:1px solid rgba(220,38,38,.2);margin-top:12px"><span>⚠️</span><span style="color:#991B1B">${esc(BACKEND.err)} — check the URL is the <b>/exec</b> link and the web app is deployed for "Anyone".</span></div>`:''}
-  </div>
-  <div class="card" style="padding:20px;border-radius:16px">
-    <h3 style="font-size:15px;font-weight:800;margin-bottom:12px">🛠️ Setup (one time)</h3>
-    <ol style="font-size:13px;line-height:1.9;color:#374151;padding-left:20px;margin:0">
-      <li>In the master Google Sheet: <b>Extensions → Apps Script</b>, paste the provided <code>Code.gs</code>, Save.</li>
-      <li><b>Deploy → New deployment → Web app</b>; Execute as <b>Me</b>, Access <b>Anyone</b>; Deploy and copy the <code>/exec</code> URL.</li>
-      <li>Paste that URL above and hit <b>Save &amp; Connect</b>. The badge turns 🟢 Live.</li>
-      <li>Each cycle, append the LMS export to <code>raw_data</code> and <code>quiz_questions</code> — every dashboard refreshes automatically.</li>
-    </ol>
-    <div class="note" style="margin-top:12px"><span>🔒</span>The web app only needs read access. The URL is stored locally in your browser; share it with your team so everyone points at the same source.</div>
-  </div></div>`;
-}
 function rAdmin(){
   const sub=S.adminSub||'changelog';
-  const tabs=[{k:'changelog',l:'📋 Version Updates'},{k:'userstats',l:'👥 User Stats'},{k:'traffic',l:'📈 Traffic'},{k:'backend',l:'🔌 Backend'}];
-  let ct = sub==='userstats'?rAdmUserStats() : sub==='traffic'?rAdmTraffic() : sub==='backend'?rAdmBackend() : rAdmChangelog();
+  const tabs=[{k:'changelog',l:'📋 Version Updates'},{k:'userstats',l:'👥 User Stats'},{k:'traffic',l:'📈 Traffic'}];
+  let ct = sub==='userstats'?rAdmUserStats() : sub==='traffic'?rAdmTraffic() : rAdmChangelog();
   return `
   <div class="${fade()}" style="margin-bottom:6px">
     <h1 style="font-size:24px;font-weight:900;margin-bottom:2px">⚙️ Admin — ${esc(S.view.toUpperCase())}</h1>
@@ -987,6 +992,6 @@ function rAdmTraffic(){
 /* ════════════ BOOT ════════════ */
 bumpUsage();
 renderSidebar(); render();
-refreshFromBackend();   // no-op unless an Apps Script URL is set (Admin → Backend)</script>
+initFirebase();   // auto-connects when FIREBASE_CONFIG is filled in; otherwise shows local empty state</script>
 </body>
 </html>
