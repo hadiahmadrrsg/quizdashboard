@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quiz Dashboard v13 — Agent Quiz Performance</title>
+<title>Quiz Dashboard v14 — Agent Quiz Performance</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -265,19 +265,21 @@ function qdBuildView(av0, porderOf, labelOf){
       const la=qdMean(hist.slice(Math.floor(hist.length/2)).map(h=>h.score));
       if(la-fa>5) improved.push({name:disp(e),bpo:bpoOf(e),tl:byAgent[e][byAgent[e].length-1].tl,prev:Math.round(fa),cur:Math.round(la),imp:Math.round(la-fa)}); });
     improved.sort((x,y)=>y.imp-x.imp); const improvedF=improved.slice(0,6);
-    const bpos=[...new Set(av.map(a=>a.bpo))].sort(); const tail=periods.slice(Math.max(0,idx-5),idx+1);
+    const bpos=[...new Set(av.map(a=>a.bpo))].sort(); const trendPeriods=periods.slice(Math.max(0,idx-6),idx+1);
     const bpoRows=[];
     bpos.forEach(b=>{ const bc=cur.filter(a=>a.bpo===b); if(!bc.length)return;
-      const trend=[]; tail.forEach(p=>{ const pa=av.filter(a=>a.bpo===b&&a.porder===p); if(pa.length)trend.push(Math.round(100*pa.filter(x=>x.passed).length/pa.length)); });
+      const trend=[], trendLabeled=[];
+      trendPeriods.forEach(p=>{ const pa=av.filter(a=>a.bpo===b&&a.porder===p); if(pa.length){ const r=qdR1(100*pa.filter(x=>x.passed).length/pa.length); trend.push(Math.round(r)); trendLabeled.push({label:plabels[p].replace(' 20','\u2019').replace('#',''),pass_rate:r}); } });
       bpoRows.push({bpo:b,pass_rate:P(bc),avg:S(bc),completed:bc.length,
         high_risk:bc.filter(a=>a.score<70||!a.passed).length,
-        roster:new Set(av.filter(a=>a.bpo===b&&win.includes(a.porder)).map(a=>a.email)).size,trend}); });
+        roster:new Set(av.filter(a=>a.bpo===b&&win.includes(a.porder)).map(a=>a.email)).size,trend,trendLabeled}); });
     const tlMap={};
     roster.forEach(e=>{ const t=byAgent[e][byAgent[e].length-1].tl; if(t)(tlMap[t]=tlMap[t]||[]).push(e); });
     const tlRows=[];
     Object.keys(tlMap).forEach(t=>{ const emails=tlMap[t]; const ca=cur.filter(a=>emails.includes(a.email));
       const ls=ca.length?ca:emails.map(e=>byAgent[e][byAgent[e].length-1]).filter(Boolean); if(!ls.length)return;
-      tlRows.push({tl:t,agents:emails.length,pass_rate:P(ls),avg:S(ls)||0,hr:ls.filter(a=>a.score<70||!a.passed).length}); });
+      const trendLabeled=[]; trendPeriods.forEach(p=>{ const pa=av.filter(a=>emails.includes(a.email)&&a.porder===p); if(pa.length) trendLabeled.push({label:plabels[p].replace(' 20','\u2019').replace('#',''),pass_rate:qdR1(100*pa.filter(x=>x.passed).length/pa.length)}); });
+      tlRows.push({tl:t,agents:emails.length,pass_rate:P(ls),avg:S(ls)||0,hr:ls.filter(a=>a.score<70||!a.passed).length,trendLabeled}); });
     tlRows.sort((x,y)=>(y.pass_rate||0)-(x.pass_rate||0));
     // agent type comparison (from Overall Score tab mapping)
     const types=[...new Set(av.filter(a=>a.atype).map(a=>a.atype))].sort();
@@ -286,7 +288,7 @@ function qdBuildView(av0, porderOf, labelOf){
       atRows.push({atype:t,pass_rate:P(tc),avg:S(tc),completed:tc.length,
         roster:new Set(av.filter(a=>a.atype===t&&win.includes(a.porder)).map(a=>a.email)).size}); });
     atRows.sort((x,y)=>(y.pass_rate||0)-(x.pass_rate||0));
-    const trend=[]; periods.slice(Math.max(0,idx-6),idx+1).forEach(p=>{ const pa=av.filter(a=>a.porder===p);
+    const trend=[]; trendPeriods.forEach(p=>{ const pa=av.filter(a=>a.porder===p);
       trend.push({label:plabels[p].replace(' 20','\u2019').replace('#',''),pass_rate:qdR1(100*pa.filter(x=>x.passed).length/pa.length)}); });
     return {period:plabels[target],prev_period:prev!=null?plabels[prev]:null,n_attempts:cur.length,
       pass_rate:P(cur),avg_score:S(cur),completion:qdR1(100*[...ce].filter(e=>roster.includes(e)).length/Math.max(roster.length,1)),
@@ -371,9 +373,12 @@ function onFirebaseLoaded(){
     }, err=>{ BACKEND={status:'error',when:null,err:String(err&&err.message||err)}; boot(); });
   }catch(e){ BACKEND={status:'error',when:null,err:String(e&&e.message||e)}; boot(); }
 }
-const VER = 'v13';
+const VER = 'v14';
 const VERSIONS = [
-  { ver:'v13', label:'Version 13', date:'9 Jun 2026', current:true, updates:[
+  { ver:'v14', label:'Version 14', date:'9 Jun 2026', current:true, updates:[
+    {cat:'🐛 Filter', text:'Pass Rate Trend now responds to the BPO and Team Lead filters — the chart shows that group\'s trend over the last 7 quiz periods instead of the fixed workflow-wide line. A pill label on the card shows which group is active.'}
+  ]},
+  { ver:'v13', label:'Version 13', date:'9 Jun 2026', updates:[
     {cat:'✅ Filter', text:'Top Performers and Most Improved now respect the Team Lead filter (each entry now carries its agent’s TL), so all of Action Needed and Recognition follow both filters.'},
     {cat:'✅ Filter', text:'BPO and Team Lead filters now combine — you can narrow to one BPO and one TL at once, and both are applied before the top-6 cut so no strong agent is hidden.'},
     {cat:'🔄 Data', text:'BPO is now read from the raw_data “Company Name” column (with bpo / BPO / Company fallbacks), so segregation keys off the right source column.'}
@@ -682,7 +687,16 @@ function renderHealth(o){
   ${passTrendCard(o)}`;
 }
 function passTrendCard(o){
-  const tr=(o.trend||[]).filter(p=>p.pass_rate!=null);
+  // pick the trend that matches the active filter (TL takes priority over BPO over All)
+  let tr=(o.trend||[]).filter(p=>p.pass_rate!=null);
+  let trendScope='All';
+  if(S.tl!=='All'){
+    const t=(o.tl||[]).find(x=>x.tl===S.tl);
+    if(t&&t.trendLabeled&&t.trendLabeled.length>=2){ tr=t.trendLabeled; trendScope=S.tl; }
+  } else if(S.bpo!=='All'){
+    const b=(o.bpo||[]).find(x=>x.bpo===S.bpo);
+    if(b&&b.trendLabeled&&b.trendLabeled.length>=2){ tr=b.trendLabeled; trendScope=S.bpo; }
+  }
   if(tr.length<2) return '';
   const W=760,H=150,padX=34,padY=20,bw=(W-padX*2)/tr.length;
   const x=i=>padX+bw*i+bw/2, y=v=>padY+(H-padY*2)*(1-v/100);
@@ -690,8 +704,9 @@ function passTrendCard(o){
   const dots=tr.map((p,i)=>`<circle cx="${x(i)}" cy="${y(p.pass_rate)}" r="4" fill="#EE4D2D"/><text x="${x(i)}" y="${y(p.pass_rate)-10}" text-anchor="middle" font-size="11" font-weight="800" fill="#1A1A1A">${p.pass_rate}%</text>`).join('');
   const labels=tr.map((p,i)=>`<text x="${x(i)}" y="${H-4}" text-anchor="middle" font-size="10" fill="#8A8F98">${esc(p.label)}</text>`).join('');
   const grid=[0,50,100].map(v=>`<line x1="${padX}" y1="${y(v)}" x2="${W-padX}" y2="${y(v)}" stroke="#EEF0F3"/><text x="${padX-6}" y="${y(v)+3}" text-anchor="end" font-size="9" fill="#C4C8CE">${v}</text>`).join('');
+  const scopeNote = trendScope!=='All' ? `<span style="font-size:11px;font-weight:800;padding:2px 9px;border-radius:6px;background:#FFF1ED;color:#EE4D2D;margin-left:8px">${esc(trendScope)}</span>` : '';
   return `<div class="card ${fade()}" style="margin-top:14px">
-    <div class="card-h"><span class="ic">📈</span><h3>Pass Rate Trend</h3><span class="stat-foot" style="margin-left:auto">last ${tr.length} quiz periods</span></div>
+    <div class="card-h"><span class="ic">📈</span><h3>Pass Rate Trend</h3>${scopeNote}<span class="stat-foot" style="margin-left:auto">last ${tr.length} quiz periods</span></div>
     <svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" style="display:block">
       ${grid}
       <polyline points="${pts}" fill="none" stroke="#EE4D2D" stroke-width="2.5" stroke-linejoin="round"/>
