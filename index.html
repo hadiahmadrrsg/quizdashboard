@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quiz Dashboard v9 — Agent Quiz Performance</title>
+<title>Quiz Dashboard v13 — Agent Quiz Performance</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -205,7 +205,7 @@ function qdNormRows(rawRows){
       month:String(month||'').trim(), half:(+quiz||1),
       name:String(r.name!=null?r.name:(r.Name||r['First Name']||'')).trim(),
       email,
-      bpo:qdNormBpo(r.bpo!=null?r.bpo:r.BPO),
+      bpo:qdNormBpo(r.bpo!=null?r.bpo:(r.BPO!=null?r.BPO:(r['Company Name']!=null?r['Company Name']:(r.company_name!=null?r.company_name:(r.Company!=null?r.Company:r.companyName))))),
       tl:String(r.tl!=null?r.tl:(r['Team Lead']||r.TL||'')).trim(),   // raw_data column N
       atype:String(r.atype!=null?r.atype:(r['Agent Type']||r.agent_type||'')).trim(),
       score:sc, passed, topic:String(r.topic!=null?r.topic:(r.Topic||'')).trim() };
@@ -257,19 +257,20 @@ function qdBuildView(av0, porderOf, labelOf){
     const top=[]; const seen=new Set();
     cur.slice().sort((a,b)=>b.score-a.score).forEach(a=>{ const e=a.email; if(seen.has(e))return; seen.add(e);
       const hist=byAgent[e].filter(h=>h.porder<=target);
-      top.push({name:disp(e),bpo:bpoOf(e),avg:Math.round(qdMean(hist.map(h=>h.score))),latest:Math.round(a.score),attempts:hist.length}); });
+      top.push({name:disp(e),bpo:bpoOf(e),tl:byAgent[e][byAgent[e].length-1].tl,avg:Math.round(qdMean(hist.map(h=>h.score))),latest:Math.round(a.score),attempts:hist.length}); });
     const topF=top.filter(t=>t.latest>=90).slice(0,6);
     const improved=[];
     Object.keys(byAgent).forEach(e=>{ const hist=byAgent[e].filter(h=>h.porder<=target); if(hist.length<2||hist[hist.length-1].porder!==target)return;
       const fa=qdMean(hist.slice(0,Math.max(1,Math.floor(hist.length/2))).map(h=>h.score));
       const la=qdMean(hist.slice(Math.floor(hist.length/2)).map(h=>h.score));
-      if(la-fa>5) improved.push({name:disp(e),bpo:bpoOf(e),prev:Math.round(fa),cur:Math.round(la),imp:Math.round(la-fa)}); });
+      if(la-fa>5) improved.push({name:disp(e),bpo:bpoOf(e),tl:byAgent[e][byAgent[e].length-1].tl,prev:Math.round(fa),cur:Math.round(la),imp:Math.round(la-fa)}); });
     improved.sort((x,y)=>y.imp-x.imp); const improvedF=improved.slice(0,6);
     const bpos=[...new Set(av.map(a=>a.bpo))].sort(); const tail=periods.slice(Math.max(0,idx-5),idx+1);
     const bpoRows=[];
     bpos.forEach(b=>{ const bc=cur.filter(a=>a.bpo===b); if(!bc.length)return;
       const trend=[]; tail.forEach(p=>{ const pa=av.filter(a=>a.bpo===b&&a.porder===p); if(pa.length)trend.push(Math.round(100*pa.filter(x=>x.passed).length/pa.length)); });
       bpoRows.push({bpo:b,pass_rate:P(bc),avg:S(bc),completed:bc.length,
+        high_risk:bc.filter(a=>a.score<70||!a.passed).length,
         roster:new Set(av.filter(a=>a.bpo===b&&win.includes(a.porder)).map(a=>a.email)).size,trend}); });
     const tlMap={};
     roster.forEach(e=>{ const t=byAgent[e][byAgent[e].length-1].tl; if(t)(tlMap[t]=tlMap[t]||[]).push(e); });
@@ -290,7 +291,7 @@ function qdBuildView(av0, porderOf, labelOf){
     return {period:plabels[target],prev_period:prev!=null?plabels[prev]:null,n_attempts:cur.length,
       pass_rate:P(cur),avg_score:S(cur),completion:qdR1(100*[...ce].filter(e=>roster.includes(e)).length/Math.max(roster.length,1)),
       high_risk:cur.filter(a=>a.score<70||!a.passed).length,roster:roster.length,completed:ce.size,
-      prev_pass:P(prevA),prev_avg:S(prevA),coaching,not_att,repeat,dropped,top:topF,improved:improvedF,bpo:bpoRows,tl:tlRows,at:atRows,trend};
+      prev_pass:P(prevA),prev_avg:S(prevA),coaching,not_att,repeat,dropped,top:topF,improved:improvedF,topAll:top,improvedAll:improved,bpo:bpoRows,tl:tlRows,at:atRows,trend};
   }
   const data={}, plist=[];
   periods.forEach(p=>{ data[String(p)]=compute(p); const any=av.find(a=>a.porder===p); plist.push({porder:p,label:plabels[p],month:any.month,half:any.half}); });
@@ -370,9 +371,27 @@ function onFirebaseLoaded(){
     }, err=>{ BACKEND={status:'error',when:null,err:String(err&&err.message||err)}; boot(); });
   }catch(e){ BACKEND={status:'error',when:null,err:String(e&&e.message||e)}; boot(); }
 }
-const VER = 'v9';
+const VER = 'v13';
 const VERSIONS = [
-  { ver:'v9', label:'Version 9', date:'4 Jun 2026', current:true, updates:[
+  { ver:'v13', label:'Version 13', date:'9 Jun 2026', current:true, updates:[
+    {cat:'✅ Filter', text:'Top Performers and Most Improved now respect the Team Lead filter (each entry now carries its agent’s TL), so all of Action Needed and Recognition follow both filters.'},
+    {cat:'✅ Filter', text:'BPO and Team Lead filters now combine — you can narrow to one BPO and one TL at once, and both are applied before the top-6 cut so no strong agent is hidden.'},
+    {cat:'🔄 Data', text:'BPO is now read from the raw_data “Company Name” column (with bpo / BPO / Company fallbacks), so segregation keys off the right source column.'}
+  ]},
+  { ver:'v12', label:'Version 12', date:'9 Jun 2026', updates:[
+    {cat:'✅ Filter', text:'High-Risk Agents count now respects the selected BPO (computed per-BPO from the period rows).'},
+    {cat:'✅ Filter', text:'Knowledge Gap (most-failed questions, wrong answers, SOP heatmap) and the Most Failed SOP card are now BPO-aware — when a question row carries a per-BPO breakdown, selecting a BPO shows only that team’s responses; without one it falls back to workflow-wide totals.'},
+    {cat:'🔄 Data', text:'Reads an optional `by_bpo` object on each quiz_questions row (keyed by BPO label from the LMS_Details First-Name column). Requires the Apps Script to populate it.'}
+  ]},
+  { ver:'v11', label:'Version 11', date:'9 Jun 2026', updates:[
+    {cat:'🐛 Admin', text:'User Stats tab now reads the live synced data instead of the empty built-in array, so per-user and per-BPO stats actually populate.'},
+    {cat:'🐛 Filter', text:'Recognition (Top Performers / Most Improved) is now filtered to the selected BPO before the top-6 cut, so a BPO filter no longer hides that team\u2019s strongest agents.'}
+  ]},
+  { ver:'v10', label:'Version 10', date:'9 Jun 2026', updates:[
+    {cat:'🐛 Filter', text:'The BPO and Team Lead filters now flow through the whole dashboard — Action Needed (coaching, repeat failures, score drops) and Recognition (top performers, most improved) are filtered to the selected group, not just the Health Summary cards.'},
+    {cat:'🐛 Filter', text:'Fixed the “All BPOs” / “All Team Leads” options — reselecting them now correctly clears the filter (they previously set the filter to the literal label text instead of “All”).'}
+  ]},
+  { ver:'v9', label:'Version 9', date:'4 Jun 2026', updates:[
     {cat:'🎯 Knowledge Gap', text:'Each failed question now lists the agents who answered it incorrectly (from the LMS_Details join).'},
     {cat:'🖱️ UI', text:'Sidebar month list expands fully instead of scrolling inside a fixed box.'}
   ]},
@@ -512,20 +531,33 @@ function curMetrics(view){
   return view.data[k] || view.monthData[String(qdMonthPorder(S.month))];
 }
 function buildKG(){
-  // Knowledge Gap for the current view + month + quiz, from live/baked question rows
+  // Knowledge Gap for the current view + month + quiz, from live/baked question rows.
+  // BPO-aware: if a question row carries a `by_bpo` breakdown (keyed by BPO label, fed from
+  // the LMS_Details First-Name column), a selected BPO uses only that slice. Question rows
+  // without `by_bpo` fall back to their workflow-wide totals, so older data still works.
   if(!QUIZ_Q || !QUIZ_Q.length) return null;
   const nv=v=>{const t=String(v||'').toLowerCase(); return t.includes('l2rr')?'l2rr':/\bp1\b/.test(t)?'p1':'dms';};
   const rows=QUIZ_Q.filter(q=> nv(q.view)===S.view
       && String(q.month||'').trim()===S.month
       && (S.quiz==='all' || (+q.quiz||1)===S.quiz));
   if(!rows.length) return null;
+  // pick the right counts for a question given the current BPO selection
+  const slice=q=>{
+    if(S.bpo!=='All' && q.by_bpo && typeof q.by_bpo==='object'){
+      for(const k in q.by_bpo){ if(qdNormBpo(k)===S.bpo) return q.by_bpo[k]; }
+      return null;   // BPO selected but this question had no responses from that BPO
+    }
+    return { answered:q.answered, correct_count:q.correct_count, most_wrong:q.most_wrong, wrong_agents:q.wrong_agents };
+  };
   const questions=rows.map(q=>{
-    const ans=+q.answered||0, cor=+q.correct_count||0, fail=ans?Math.round(100*(ans-cor)/ans):0;
+    const s=slice(q); if(!s) return null;
+    const ans=+s.answered||0, cor=+s.correct_count||0, fail=ans?Math.round(100*(ans-cor)/ans):0;
     const txt=String(q.question||('Q'+(q.q_no||''))).replace(/\s+/g,' ').trim();
     return { short: txt.length>78?txt.slice(0,78)+'…':txt, topic:String(q.topic||'Untagged').trim()||'Untagged',
-             fail, n:ans, wrong:String(q.most_wrong||'').trim(),
-             q_no:String(q.q_no||'').trim(), agents:Array.isArray(q.wrong_agents)?q.wrong_agents.filter(Boolean):[] };
-  }).sort((a,b)=>b.fail-a.fail);
+             fail, n:ans, wrong:String(s.most_wrong||'').trim(),
+             q_no:String(q.q_no||'').trim(), agents:Array.isArray(s.wrong_agents)?s.wrong_agents.filter(Boolean):[] };
+  }).filter(Boolean).sort((a,b)=>b.fail-a.fail);
+  if(!questions.length) return null;
   const tg={}; questions.forEach(q=>{ (tg[q.topic]=tg[q.topic]||[0,0]); tg[q.topic][0]+=q.fail*q.n; tg[q.topic][1]+=q.n; });
   const heat=Object.keys(tg).map(t=>{ const [fw,n]=tg[t]; return {topic:t,fail:n?Math.round(fw/n):0,n}; }).sort((a,b)=>b.fail-a.fail);
   return { questions, heat, has_q:true, most_failed_sop: heat.length?heat[0].topic:'\u2014', most_failed_sop_rate: heat.length?heat[0].fail:0 };
@@ -557,6 +589,15 @@ function render(){
   ensureSel();
   const o = Object.assign({}, curMetrics(view), view.kg, buildKG()||{}, { n_periods: view.n_periods });
   O = o;
+  // BPO / TL filters flow through the whole dashboard (not just Health Summary).
+  // All cohort rows carry .bpo and .tl, so a single combined filter covers them.
+  // top/improved are rebuilt from the full topAll/improvedAll lists so filtering precedes the top-6 cut.
+  if(S.bpo!=='All' || S.tl!=='All'){
+    const keep = x => (S.bpo==='All' || x.bpo===S.bpo) && (S.tl==='All' || x.tl===S.tl);
+    ['coaching','repeat','dropped'].forEach(k=>{ if(Array.isArray(o[k])) o[k]=o[k].filter(keep); });
+    o.top      = (o.topAll||[]).filter(x=>keep(x) && x.latest>=90).slice(0,6);
+    o.improved = (o.improvedAll||[]).filter(keep).slice(0,6);
+  }
   const bpoNames = ['All', ...o.bpo.map(b=>b.bpo)];
   const tlNames = ['All', ...o.tl.map(t=>t.tl)];
 
@@ -569,8 +610,8 @@ function render(){
     </div>
     <div class="topbar-right">
       <div class="pill"><span>📅</span><span>${esc(o.period)}</span></div>
-      <select class="pill" onchange="S.bpo=this.value;rerender()">${bpoNames.map(b=>`<option ${b===S.bpo?'selected':''}>${b==='All'?'All BPOs':esc(b)}</option>`).join('')}</select>
-      <select class="pill" onchange="S.tl=this.value;rerender()">${tlNames.map(t=>`<option ${t===S.tl?'selected':''}>${t==='All'?'All Team Leads':esc(t)}</option>`).join('')}</select>
+      <select class="pill" onchange="S.bpo=this.value;rerender()">${bpoNames.map(b=>`<option value="${esc(b)}" ${b===S.bpo?'selected':''}>${b==='All'?'All BPOs':esc(b)}</option>`).join('')}</select>
+      <select class="pill" onchange="S.tl=this.value;rerender()">${tlNames.map(t=>`<option value="${esc(t)}" ${t===S.tl?'selected':''}>${t==='All'?'All Team Leads':esc(t)}</option>`).join('')}</select>
       <button class="pill pill-primary" onclick="exportSummary()"><span>⬇</span><span>Export</span></button>
     </div>
   </div>
@@ -603,8 +644,8 @@ function renderQuizFilter(view){
 /* ── ROW 1 — HEALTH SUMMARY ── */
 function renderHealth(o){
   // BPO filter applies to the three numeric cards
-  let pass=o.pass_rate, avg=o.avg_score, comp=o.completion, completed=o.completed, roster=o.roster;
-  if(S.bpo!=='All'){ const b=o.bpo.find(x=>x.bpo===S.bpo); if(b){ pass=b.pass_rate; avg=b.avg; completed=b.completed; roster=b.roster; comp=Math.round(1000*b.completed/Math.max(b.roster,1))/10; } }
+  let pass=o.pass_rate, avg=o.avg_score, comp=o.completion, completed=o.completed, roster=o.roster, hr=o.high_risk;
+  if(S.bpo!=='All'){ const b=o.bpo.find(x=>x.bpo===S.bpo); if(b){ pass=b.pass_rate; avg=b.avg; completed=b.completed; roster=b.roster; comp=Math.round(1000*b.completed/Math.max(b.roster,1))/10; hr=b.high_risk; } }
   return `
   <div class="section-label">Health Summary</div>
   <div class="stat-grid ${fade()}">
@@ -629,7 +670,7 @@ function renderHealth(o){
     </div>
     <div class="card stat">
       <div class="stat-top"><div class="stat-ic" style="background:#FEF2F2;color:#DC2626">⚠️</div></div>
-      <div><div class="stat-name">High-Risk Agents</div><div class="stat-val" style="margin-top:4px">${o.high_risk}</div></div>
+      <div><div class="stat-name">High-Risk Agents</div><div class="stat-val" style="margin-top:4px">${hr}</div></div>
       <span class="stat-foot">scored below 70% / failed</span>
     </div>
     <div class="card stat">
@@ -880,11 +921,11 @@ function rAdmChangelog(){
   </div>`;
 }
 
-/* ── User Stats (from RAW_ROWS) ── */
+/* ── User Stats (from live RAW) ── */
 function rAdmUserStats(){
   const norm=v=>{ const t=String(v||'').toLowerCase(); return t.includes('l2rr')?'L2RR':/\bp1\b/.test(t)?'P1':'DMS'; };
   const byUser={}, byBPO={};
-  RAW_ROWS.forEach(r=>{
+  RAW.forEach(r=>{
     let sc=parseFloat(r.score); if(sc<=1) sc*=100;
     const e=String(r.email||'').toLowerCase(); if(!e) return;
     const po=qdQuizPorder(r.month, r.quiz||1);
@@ -898,7 +939,7 @@ function rAdmUserStats(){
   const bpos=Object.values(byBPO).map(b=>({...b,avg:Math.round(b.total/b.attempts),userCount:b.users.size})).sort((a,b)=>b.avg-a.avg);
   const totalAttempts=users.reduce((s,u)=>s+u.attempts,0);
   const overallAvg=totalAttempts?Math.round(users.reduce((s,u)=>s+u.total,0)/totalAttempts):0;
-  const passRate=totalAttempts?Math.round(100*RAW_ROWS.filter(r=>{let s=parseFloat(r.score);if(s<=1)s*=100;return s>=80;}).length/RAW_ROWS.length):0;
+  const passRate=RAW.length?Math.round(100*RAW.filter(r=>{let s=parseFloat(r.score);if(s<=1)s*=100;return s>=80;}).length/RAW.length):0;
   return `<div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
     <div class="card" style="padding:16px;text-align:center;border-radius:14px"><div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;margin-bottom:4px">Total Users</div><div style="font-size:28px;font-weight:900;color:#2563EB">${users.length}</div></div>
