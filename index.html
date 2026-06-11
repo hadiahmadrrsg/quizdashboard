@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quiz Dashboard v14 — Agent Quiz Performance</title>
+<title>Quiz Dashboard v15 — Agent Quiz Performance</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -234,10 +234,16 @@ function qdBuildView(av0, porderOf, labelOf){
     const roster=[...new Set(av.filter(a=>win.includes(a.porder)).map(a=>a.email))].sort();
     const ce=new Set(cur.map(a=>a.email));
     const coaching=[];
-    cur.forEach(a=>{ const e=a.email, hist=byAgent[e].filter(h=>h.porder<=target);
-      if(a.score<QD_PASS) coaching.push({name:disp(e),bpo:bpoOf(e),latest:Math.round(a.score),
-        avg:Math.round(qdMean(hist.map(h=>h.score))),fails:hist.filter(h=>!h.passed).length,
-        attempts:hist.length,risk:a.score<60?'High':'Medium',tl:a.tl}); });
+    const coachSeen=new Set();
+    cur.forEach(a=>{ const e=a.email; if(coachSeen.has(e)) return;
+      const periodRows=cur.filter(x=>x.email===e);
+      const failedRows=periodRows.filter(x=>!x.passed);
+      if(!failedRows.length) return;            // all passed in this period — skip
+      coachSeen.add(e);
+      const worst=Math.min(...periodRows.map(x=>x.score));
+      coaching.push({name:disp(e),bpo:bpoOf(e),latest:Math.round(worst),
+        avg:Math.round(qdMean(periodRows.map(h=>h.score))),fails:failedRows.length,
+        attempts:periodRows.length,risk:worst<60?'High':'Medium',tl:a.tl}); });
     coaching.sort((x,y)=> (x.risk!=='High')-(y.risk!=='High') || x.latest-y.latest);
     const not_att=[];
     roster.forEach(e=>{ if(!ce.has(e)){ const hist=byAgent[e].filter(h=>h.porder<=target); const last=hist[hist.length-1]||byAgent[e][0];
@@ -247,7 +253,8 @@ function qdBuildView(av0, porderOf, labelOf){
     Object.keys(byAgent).forEach(e=>{ const hist=byAgent[e].filter(h=>h.porder<=target);
       const fails=hist.filter(h=>!h.passed && recent4.has(h.porder));
       if(fails.length>=2){ const rh=hist.filter(h=>recent4.has(h.porder));
-        repeat.push({name:disp(e),bpo:bpoOf(e),fails:fails.length,attempts:rh.length,avg:Math.round(qdMean(rh.map(h=>h.score))),tl:byAgent[e][byAgent[e].length-1].tl}); } });
+        const failedPeriods=fails.map(h=>plabels[h.porder]).filter(Boolean);
+        repeat.push({name:disp(e),bpo:bpoOf(e),fails:fails.length,attempts:rh.length,avg:Math.round(qdMean(rh.map(h=>h.score))),tl:byAgent[e][byAgent[e].length-1].tl,failedPeriods}); } });
     repeat.sort((x,y)=>y.fails-x.fails);
     const dropped=[];
     Object.keys(byAgent).forEach(e=>{ const hist=byAgent[e].filter(h=>h.porder<=target); if(hist.length<2)return;
@@ -270,7 +277,7 @@ function qdBuildView(av0, porderOf, labelOf){
     bpos.forEach(b=>{ const bc=cur.filter(a=>a.bpo===b); if(!bc.length)return;
       const trend=[], trendLabeled=[];
       trendPeriods.forEach(p=>{ const pa=av.filter(a=>a.bpo===b&&a.porder===p); if(pa.length){ const r=qdR1(100*pa.filter(x=>x.passed).length/pa.length); trend.push(Math.round(r)); trendLabeled.push({label:plabels[p].replace(' 20','\u2019').replace('#',''),pass_rate:r}); } });
-      bpoRows.push({bpo:b,pass_rate:P(bc),avg:S(bc),completed:bc.length,
+      bpoRows.push({bpo:b,pass_rate:P(bc),avg:S(bc),completed:new Set(bc.map(a=>a.email)).size,
         high_risk:bc.filter(a=>a.score<70||!a.passed).length,
         roster:new Set(av.filter(a=>a.bpo===b&&win.includes(a.porder)).map(a=>a.email)).size,trend,trendLabeled}); });
     const tlMap={};
@@ -373,9 +380,16 @@ function onFirebaseLoaded(){
     }, err=>{ BACKEND={status:'error',when:null,err:String(err&&err.message||err)}; boot(); });
   }catch(e){ BACKEND={status:'error',when:null,err:String(e&&e.message||e)}; boot(); }
 }
-const VER = 'v14';
+const VER = 'v15';
 const VERSIONS = [
-  { ver:'v14', label:'Version 14', date:'9 Jun 2026', current:true, updates:[
+  { ver:'v15', label:'Version 15', date:'11 Jun 2026', current:true, updates:[
+    {cat:'🐛 Fix', text:'Completion Rate no longer exceeds 100% when BPO is selected on Quiz=ALL — it now counts unique agents instead of rows.'},
+    {cat:'✅ Change', text:'Agents Needing Coaching now shows only current-period results (fails in this quiz or month), not all-time history. Fails column shows "X/Y" (failed / total attempts this period).'},
+    {cat:'✅ Change', text:'Repeat Failures now shows the specific quiz periods where the agent failed (e.g. "Apr\'26 #1, May\'26 #2") so you can trace the pattern.'},
+    {cat:'✅ Feature', text:'Knowledge Gap — Most Failed Questions and Most Selected Wrong Answers now show a Flow tag (A / B / C) on each row, and a Flow filter dropdown to narrow the whole section to one flow.'},
+    {cat:'✅ Feature', text:'Most Failed Questions now shows a "Failed" count column — the number of agents who got each question wrong, for prioritizing refresher training.'}
+  ]},
+  { ver:'v14', label:'Version 14', date:'9 Jun 2026', updates:[
     {cat:'🐛 Filter', text:'Pass Rate Trend now responds to the BPO and Team Lead filters — the chart shows that group\'s trend over the last 7 quiz periods instead of the fixed workflow-wide line. A pill label on the card shows which group is active.'}
   ]},
   { ver:'v13', label:'Version 13', date:'9 Jun 2026', updates:[
@@ -442,7 +456,7 @@ const VERSIONS = [
   ]}
 ];
 const VIEWS = [['dms','DMS'],['l2rr','L2RR'],['p1','P1']];
-let S = { view:'dms', page:'home', month:null, quiz:null, bpo:'All', tl:'All', adminSub:'changelog', openYears:null, _trafficExclude:'' };  // quiz: 'all' | 1 | 2
+let S = { view:'dms', page:'home', month:null, quiz:null, bpo:'All', tl:'All', flow:'All', adminSub:'changelog', openYears:null, _trafficExclude:'' };  // quiz: 'all' | 1 | 2
 let O = null;       // currently-rendered merged period object (period data + cumulative KG)
 let ANIMATE = true; // controls the fade-in; off for in-page filter changes (prevents flicker)
 
@@ -522,9 +536,10 @@ function renderSidebar(){
 }
 function toggleYear(y){ S.openYears[y] = S.openYears[y]===false; ANIMATE=false; renderSidebar(); }
 function setPage(p){ S.page=p; ANIMATE=true; renderSidebar(); render(); window.scrollTo(0,0); }
-function setView(v){ S.view=v; S.month=null; S.quiz=null; S.bpo='All'; S.tl='All'; S.openYears=null; ANIMATE=true; renderSidebar(); render(); }
-function selectMonth(m){ S.month=m; S.bpo='All'; S.tl='All'; ANIMATE=false; renderSidebar(); render(); }
-function setQuiz(q){ S.quiz=(q==='all'?'all':+q); S.bpo='All'; S.tl='All'; ANIMATE=false; render(); }
+function setView(v){ S.view=v; S.month=null; S.quiz=null; S.bpo='All'; S.tl='All'; S.flow='All'; S.openYears=null; ANIMATE=true; renderSidebar(); render(); }
+function selectMonth(m){ S.month=m; S.bpo='All'; S.tl='All'; S.flow='All'; ANIMATE=false; renderSidebar(); render(); }
+function setQuiz(q){ S.quiz=(q==='all'?'all':+q); S.bpo='All'; S.tl='All'; S.flow='All'; ANIMATE=false; render(); }
+function setFlow(f){ S.flow=f; ANIMATE=false; render(); }
 function rerender(){ ANIMATE=false; render(); }   // used by filters — no fade, no flicker
 const fade = () => ANIMATE ? 'fadeUp' : '';
 
@@ -557,15 +572,18 @@ function buildKG(){
   const questions=rows.map(q=>{
     const s=slice(q); if(!s) return null;
     const ans=+s.answered||0, cor=+s.correct_count||0, fail=ans?Math.round(100*(ans-cor)/ans):0;
+    const failed_count=ans-cor;
     const txt=String(q.question||('Q'+(q.q_no||''))).replace(/\s+/g,' ').trim();
+    const flow=String(q.flow||'').trim().toUpperCase();
     return { short: txt.length>78?txt.slice(0,78)+'…':txt, topic:String(q.topic||'Untagged').trim()||'Untagged',
-             fail, n:ans, wrong:String(s.most_wrong||'').trim(),
+             fail, n:ans, failed_count, wrong:String(s.most_wrong||'').trim(), flow,
              q_no:String(q.q_no||'').trim(), agents:Array.isArray(s.wrong_agents)?s.wrong_agents.filter(Boolean):[] };
   }).filter(Boolean).sort((a,b)=>b.fail-a.fail);
   if(!questions.length) return null;
+  const flows=[...new Set(questions.map(q=>q.flow).filter(Boolean))].sort();
   const tg={}; questions.forEach(q=>{ (tg[q.topic]=tg[q.topic]||[0,0]); tg[q.topic][0]+=q.fail*q.n; tg[q.topic][1]+=q.n; });
   const heat=Object.keys(tg).map(t=>{ const [fw,n]=tg[t]; return {topic:t,fail:n?Math.round(fw/n):0,n}; }).sort((a,b)=>b.fail-a.fail);
-  return { questions, heat, has_q:true, most_failed_sop: heat.length?heat[0].topic:'\u2014', most_failed_sop_rate: heat.length?heat[0].fail:0 };
+  return { questions, flows, heat, has_q:true, most_failed_sop: heat.length?heat[0].topic:'\u2014', most_failed_sop_rate: heat.length?heat[0].fail:0 };
 }
 function apiUrl(){ try{ return localStorage.getItem('qd_api_url') || API_URL || ''; }catch(e){ return API_URL||''; } }
 function apiKey(){ try{ return localStorage.getItem('qd_api_key') || ''; }catch(e){ return ''; } }
@@ -722,18 +740,19 @@ function renderAction(o){
   <div class="g3 ${fade()}">
     <div class="card">
       <div class="card-h"><span class="ic">🧑‍🏫</span><h3>Agents Needing Coaching</h3><span class="va">${o.coaching.length}</span></div>
-      ${o.coaching.length?`<table><thead><tr><th>Agent</th><th>Latest</th><th>Avg</th><th>Fails</th><th>Risk</th></tr></thead><tbody>
+      ${o.coaching.length?`<table><thead><tr><th>Agent</th><th>Score</th><th>Avg</th><th>Fails</th><th>Risk</th></tr></thead><tbody>
         ${o.coaching.slice(0,8).map(c=>{const[col,bg]=scoreColor(c.latest);return `<tr>
           <td><span class="av" style="background:${avColor(c.name)}">${initials(c.name)}</span><span class="nm">${esc(c.name)}</span><div class="bpo-tag" style="margin-left:34px">${esc(c.bpo)}</div></td>
           <td><span class="scorechip" style="color:${col};background:${bg}">${c.latest}%</span></td>
-          <td>${c.avg}%</td><td>${c.fails}</td><td>${riskTag(c.risk)}</td></tr>`;}).join('')}
+          <td>${c.avg}%</td><td>${c.fails}/${c.attempts}</td><td>${riskTag(c.risk)}</td></tr>`;}).join('')}
       </tbody></table>`:emptyState('🎉','Everyone passed this period')}
     </div>
     <div class="card">
       <div class="card-h"><span class="ic">🔁</span><h3>Repeat Failures</h3><span class="va">${o.repeat.length}</span></div>
       ${o.repeat.length?o.repeat.slice(0,8).map(a=>`<div class="lrow">
         <span class="av" style="background:${avColor(a.name)}">${initials(a.name)}</span>
-        <div class="meta"><div class="nm2">${esc(a.name)}</div><div class="sub">${esc(a.bpo)} · ${a.attempts} recent attempts</div></div>
+        <div class="meta"><div class="nm2">${esc(a.name)}</div><div class="sub">${esc(a.bpo)} · ${a.attempts} recent attempts</div>
+          <div style="margin-top:3px;font-size:11px;color:#B91C1C">Failed: ${a.failedPeriods.map(p=>esc(p)).join(', ')}</div></div>
         <span class="scorechip" style="color:#DC2626;background:#FEF2F2">${a.fails}× failed</span></div>`).join(''):emptyState('👍','No repeat failures in the last 4 periods')}
     </div>
     <div class="card">
@@ -752,29 +771,41 @@ function renderGap(o){
     return `<div class="section-label">Knowledge Gap</div>
     <div class="card ${fade()}">${emptyState('🗂️','No question-level data for this view in the master file')}</div>`;
   }
-  const wrongList = o.questions.filter(q=>q.wrong).slice(0,6);
-  const heatMax = Math.max(...o.heat.map(h=>h.fail),1);
+  // flow filter
+  const flows=o.flows||[];
+  const flowFilter = flows.length ? `<select class="pill" style="margin-left:auto;font-size:12px" onchange="setFlow(this.value)">${['All',...flows].map(f=>`<option value="${esc(f)}" ${f===S.flow?'selected':''}>${f==='All'?'All Flows':'Flow '+esc(f)}</option>`).join('')}</select>` : '';
+  // apply flow filter
+  let qs=o.questions, wrongList, heat=o.heat;
+  if(S.flow!=='All'){
+    qs=qs.filter(q=>q.flow===S.flow);
+    const tg={}; qs.forEach(q=>{ (tg[q.topic]=tg[q.topic]||[0,0]); tg[q.topic][0]+=q.fail*q.n; tg[q.topic][1]+=q.n; });
+    heat=Object.keys(tg).map(t=>{ const [fw,n]=tg[t]; return {topic:t,fail:n?Math.round(fw/n):0,n}; }).sort((a,b)=>b.fail-a.fail);
+  }
+  wrongList=qs.filter(q=>q.wrong).slice(0,6);
+  const heatMax = Math.max(...heat.map(h=>h.fail),1);
   return `
-  <div class="section-label">Knowledge Gap</div>
+  <div class="section-label" style="display:flex;align-items:center;gap:10px">Knowledge Gap${flowFilter}</div>
   <div class="g3 ${fade()}">
     <div class="card">
       <div class="card-h"><span class="ic">❓</span><h3>Most Failed Questions</h3></div>
-      <table><thead><tr><th>Scenario</th><th>SOP Topic</th><th>Fail</th></tr></thead><tbody>
-        ${o.questions.slice(0,7).map(q=>{const[col,bg]=scoreColor(100-q.fail);return `<tr>
+      <table><thead><tr><th>Scenario</th>${flows.length?'<th>Flow</th>':''}<th>SOP Topic</th><th>Failed</th><th>Fail%</th></tr></thead><tbody>
+        ${qs.slice(0,7).map(q=>{const[col,bg]=scoreColor(100-q.fail);return `<tr>
           <td><span class="nm">${esc(q.short)}</span>${q.agents.length?`<div style="margin-top:4px;font-size:11px;color:#B91C1C">✖ ${esc(q.agents.join(', '))}</div>`:''}</td>
+          ${flows.length?`<td>${q.flow?`<span class="bpo-tag" style="background:#EEF2FF;color:#4F46E5">Flow ${esc(q.flow)}</span>`:'-'}</td>`:''}
           <td><span class="bpo-tag">${esc(q.topic)}</span></td>
+          <td style="font-weight:700;text-align:center">${q.failed_count}</td>
           <td><span class="scorechip" style="color:${q.fail>=40?'#DC2626':'#D97706'};background:${q.fail>=40?'#FEF2F2':'#FFFBEB'}">${q.fail}%</span></td></tr>`;}).join('')}
       </tbody></table>
     </div>
     <div class="card">
       <div class="card-h"><span class="ic">✖️</span><h3>Most Selected Wrong Answers</h3></div>
       ${wrongList.map(q=>`<div style="padding:10px 0;border-bottom:1px solid #F3F4F6">
-        <div class="bpo-tag" style="margin-bottom:5px">${esc(q.topic)} · ${q.fail}% picked wrong</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px"><span class="bpo-tag">${esc(q.topic)}</span>${q.flow?`<span class="bpo-tag" style="background:#EEF2FF;color:#4F46E5">Flow ${esc(q.flow)}</span>`:''}<span style="font-size:11px;color:#8A8F98;margin-left:auto">${q.fail}% picked wrong · ${q.failed_count} agents</span></div>
         <div class="wrongchip">${esc(q.wrong)}</div></div>`).join('')}
     </div>
     <div class="card">
       <div class="card-h"><span class="ic">🌡️</span><h3>SOP Topic Heatmap</h3></div>
-      ${o.heat.map(h=>{const t=h.fail/heatMax;const col=h.fail>=40?'#DC2626':h.fail>=25?'#EA580C':h.fail>=12?'#D97706':'#10B981';
+      ${heat.map(h=>{const t=h.fail/heatMax;const col=h.fail>=40?'#DC2626':h.fail>=25?'#EA580C':h.fail>=12?'#D97706':'#10B981';
         return `<div class="heat-row">
           <div class="heat-name">${esc(h.topic)}</div>
           <div class="heat-bar"><div class="heat-fill" style="width:${Math.max(h.fail,8)}%;background:${col}">${h.fail}%</div></div>
@@ -858,8 +889,8 @@ function exportSummary(){
   rows.push(['View',S.view.toUpperCase()],['Period',o.period],['Pass Rate',o.pass_rate+'%'],
     ['Average Score',o.avg_score+'%'],['Completion',o.completion+'%'],['High-Risk Agents',o.high_risk],
     ['Most Failed SOP',o.most_failed_sop]);
-  rows.push([],['Agents Needing Coaching','Latest','Avg','Fails','Risk','BPO']);
-  o.coaching.forEach(c=>rows.push([c.name,c.latest+'%',c.avg+'%',c.fails,c.risk,c.bpo]));
+  rows.push([],['Agents Needing Coaching','Score','Avg','Fails','Attempts','Risk','BPO']);
+  o.coaching.forEach(c=>rows.push([c.name,c.latest+'%',c.avg+'%',c.fails,c.attempts,c.risk,c.bpo]));
   const csv=rows.map(r=>r.map(x=>`"${String(x==null?'':x).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
